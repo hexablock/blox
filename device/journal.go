@@ -73,6 +73,23 @@ func (j *InmemJournal) Exists(id []byte) bool {
 	return ok
 }
 
+// Iter obtains a read-lock and interates over each key-value pair issuing the
+// callback for each
+func (j *InmemJournal) Iter(cb func(key, value []byte) error) error {
+	var err error
+
+	j.mu.RLock()
+	for k, val := range j.m {
+		key := []byte(k)
+		if err = cb(key, val); err != nil {
+			break
+		}
+	}
+	j.mu.RUnlock()
+
+	return err
+}
+
 // Close is a no-op to satifsy the journal interface
 func (j *InmemJournal) Close() error {
 	return nil

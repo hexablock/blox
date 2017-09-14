@@ -57,7 +57,7 @@ func newFSTester() (*fsTester, error) {
 	rdev, err := device.NewFileRawDevice(df, vt.hasher)
 	if err == nil {
 		vt.raw = rdev
-		vt.dev = device.NewBlockDevice(rdev)
+		vt.dev = device.NewBlockDevice(device.NewInmemJournal(), rdev)
 		vt.fs = NewBloxFS(vt.dev)
 	}
 
@@ -117,12 +117,6 @@ func TestBloxFS(t *testing.T) {
 	if stat.IsDir() {
 		t.Fatal("should not be a dir")
 	}
-
-	// bf := stat.(*BloxFile)
-	// b := bf.Sys()
-	// if _, ok := b.(block.Block); !ok {
-	// 	t.Fatal("should be of type block.Block")
-	// }
 
 	// Remove
 	if err = bfs.Remove(idb); err != nil {

@@ -171,7 +171,8 @@ func (trans *NetTransport) getBlockServe(conn *protoConn, id []byte) (bool, erro
 	if err = writeBlockTypeAndSize(conn, blk.Type(), blk.Size()); err != nil {
 		return true, err
 	}
-	log.Printf("[DEBUG] getBlockServe id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
+	log.Printf("[DEBUG] NetTransport.getBlockServe id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
+
 	// Get reader for local block
 	var src io.ReadCloser
 	if src, err = blk.Reader(); err != nil {
@@ -247,7 +248,8 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 
 		// Write error response
 		hdr := Header{op, respFail}
-		log.Printf("[DEBUG] TCP response header=%x error='%v'", hdr, err)
+		log.Printf("[DEBUG] TCP response id=%x header=%x error='%v'", id, hdr, err)
+
 		if err = conn.WriteFrame(hdr, []byte(err.Error())); err != nil {
 			log.Printf("[ERROR] Failed to write error frame: %v", err)
 			// Close the connection if we failed to write the error response

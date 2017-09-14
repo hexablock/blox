@@ -118,7 +118,7 @@ func (st *FileRawDevice) SetBlock(blk block.Block) ([]byte, error) {
 	src.Close()
 	err = dst.Close()
 
-	log.Printf("FileRawDevice.SetBlock id=%x size=%d error='%v'", dstBlk.ID(), dstBlk.Size(), err)
+	log.Printf("[DEBUG] FileRawDevice.SetBlock id=%x size=%d error='%v'", dstBlk.ID(), dstBlk.Size(), err)
 
 	return dstBlk.ID(), err
 }

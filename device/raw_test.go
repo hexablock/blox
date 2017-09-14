@@ -58,7 +58,7 @@ func newDevTester() (*devTester, error) {
 	rdev, err := NewFileRawDevice(df, vt.hasher)
 	if err == nil {
 		vt.raw = rdev
-		vt.dev = NewBlockDevice(rdev)
+		vt.dev = NewBlockDevice(NewInmemJournal(), rdev)
 	}
 
 	return vt, err

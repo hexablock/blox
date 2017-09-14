@@ -8,7 +8,6 @@ import (
 
 	"github.com/hexablock/blox/block"
 	"github.com/hexablock/blox/utils"
-	"github.com/hexablock/hexatype"
 )
 
 // BloxFile is a file on the blox file-system
@@ -94,7 +93,15 @@ func (bf *BloxFile) BlockSize() uint64 {
 
 // Write writes the given data to the underlying sharder
 func (bf *BloxFile) Write(p []byte) (int, error) {
-	return bf.w.Write(p)
+	select {
+	case err := <-bf.done:
+		// Check for errors before performing any writes. These come from the writeBlocks
+		// go-routine
+		log.Printf("BloxFile.Write error='%v'", err)
+		return 0, err
+	default:
+		return bf.w.Write(p)
+	}
 }
 
 // fetchBlocks reads blocks from the underlying device and makes them available in the
@@ -118,7 +125,7 @@ func (bf *BloxFile) fetchBlocks() {
 
 	close(bf.rblk)
 
-	// In case of read only send to the done channel if there is an error.
+	// In case of read, send to done channel only on error.
 	if err != nil {
 		bf.done <- err
 	}
@@ -173,34 +180,26 @@ func (bf *BloxFile) writeBlocks() {
 	shards := bf.w.Shards()
 	for shard := range shards {
 		// Generate a new block from the shard
-		blk, err := newBlockFromShard(shard, bf.dev.Hasher())
+		blk, err := bf.newBlockFromShard(shard)
 		if err != nil {
-
-			//
-			// TODO: Break loop and expose error
-			//
+			//log.Printf("[ERROR] Failed to create block index=%d offset=%d error='%v'", shard.Index, shard.Offset, err)
 			bf.done <- err
 			return
-			//log.Printf("[ERROR] Failed to create block index=%d offset=%d error='%v'", shard.Index, shard.Offset, err)
-			//continue
 		}
 
 		// Set the block to the BlockDevice
 		_, err = bf.dev.SetBlock(blk)
-		if err == nil {
-			// Update the index block.  The index starts at 1 so we add 1
+		// Update the index block also when the actual block exists as the block may be
+		// shared.  The index starts at 1 so we add 1
+		if err == nil || err == block.ErrBlockExists {
 			i := shard.Index + 1
 			bf.idx.AddBlock(i, blk)
 			//log.Printf("[INFO] New block from shard index=%d id=%x size=%d", i, blk.ID(), blk.Size())
 			continue
 		}
 
-		//
-		// TODO: Break loop and expose error
-		//
-
-		log.Printf("[ERROR] Failed to persist block id=%x index=%d offset=%d error='%v'",
-			blk.ID(), shard.Index, shard.Offset, err)
+		//log.Printf("[ERROR] Failed to persist block id=%x index=%d offset=%d error='%v'",
+		//	blk.ID(), shard.Index, shard.Offset, err)
 		bf.done <- err
 		return
 	}
@@ -247,7 +246,8 @@ func (bf *BloxFile) closeReader() error {
 	return nil
 }
 
-// Runtime returns the runtime for a complete file write or read depending on usage
+// Runtime returns the runtime for a complete file write or read depending on usage.  The value
+// will only be valid once Close is called.
 func (bf *BloxFile) Runtime() time.Duration {
 	return bf.end.Sub(bf.start)
 }
@@ -265,8 +265,9 @@ func (bf *BloxFile) Close() error {
 	return bf.closeReader()
 }
 
-func newBlockFromShard(shard *utils.Shard, hasher hexatype.Hasher) (block.Block, error) {
-	blk := block.NewDataBlock(nil, hasher)
+func (bf *BloxFile) newBlockFromShard(shard *utils.Shard) (block.Block, error) {
+
+	blk := block.NewDataBlock(nil, bf.dev.Hasher())
 
 	wr, err := blk.Writer()
 	if err != nil {

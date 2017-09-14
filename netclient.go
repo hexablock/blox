@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"github.com/hexablock/blox/block"
@@ -146,11 +145,11 @@ func (trans *NetClient) SetBlock(host string, blk block.Block) ([]byte, error) {
 		return nil, err
 	}
 
-	log.Printf("Using id=%x local-addr=%s remote-addr=%s", blk.ID(), conn.LocalAddr().String(), host)
+	//log.Printf("Using id=%x local-addr=%s remote-addr=%s", blk.ID(), conn.LocalAddr().String(), host)
 	//defer trans.pool.returnConn(conn)
 
 	// Write request
-	log.Printf("NetClient.SetBlock request op=%d id=%x", reqTypeSet, blk.ID())
+	//log.Printf("NetClient.SetBlock request op=%d id=%x", reqTypeSet, blk.ID())
 	id := blk.ID()
 	if err = writeHeaderAndID(conn, Header{reqTypeSet, 0}, id); err != nil {
 		conn.Close()
@@ -168,7 +167,7 @@ func (trans *NetClient) SetBlock(host string, blk block.Block) ([]byte, error) {
 		conn.Close()
 		return nil, err
 	}
-	log.Printf("Sent id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
+	//log.Printf("Sent id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
 
 	// Get reader for the provided block
 	rd, err := blk.Reader()
@@ -176,14 +175,15 @@ func (trans *NetClient) SetBlock(host string, blk block.Block) ([]byte, error) {
 		conn.Close()
 		return nil, err
 	}
-	log.Printf("Copying id=%x size=%d", blk.ID(), blk.Size())
+	//log.Printf("Copying id=%x size=%d", blk.ID(), blk.Size())
+
 	// Write block data to network connection
 	if err = utils.CopyNAndCheck(conn, rd, int64(blk.Size())); err != nil {
-		log.Printf("[ERROR] Failed to set block id=%x error='%v", blk.ID(), err)
+		//log.Printf("[ERROR] Failed to set block id=%x error='%v", blk.ID(), err)
 		conn.Close()
 		return nil, err
 	}
-	log.Println("Copied", blk.Size())
+	//log.Println("Copied", blk.Size())
 
 	//defer trans.pool.returnConn(conn)
 	// Response header

@@ -38,6 +38,7 @@ type RawDevice interface {
 type Journal interface {
 	Get(id []byte) ([]byte, error)
 	Exists(id []byte) bool
+	Iter(cb func(key []byte, value []byte) error) error
 	Set(id, val []byte) error
 	Remove(id []byte) (inline bool, err error)
 	Close() error
@@ -48,7 +49,7 @@ type Journal interface {
 // the type and size of the block indexed by its hash id. Index and Tree blocks are stored
 // in the index/journal.
 type BlockDevice struct {
-	// Block index/journal for the underlying RawDevice
+	// Block journal/index for the underlying RawDevice
 	j Journal
 	// Actual block store for data blocks
 	dev RawDevice
@@ -57,9 +58,9 @@ type BlockDevice struct {
 }
 
 // NewBlockDevice inits a new BlockDevice with the BlockDevice.
-func NewBlockDevice(dev RawDevice) *BlockDevice {
+func NewBlockDevice(journal Journal, dev RawDevice) *BlockDevice {
 	return &BlockDevice{
-		j:      NewInmemJournal(),
+		j:      journal,
 		dev:    dev,
 		hasher: dev.Hasher(),
 	}
@@ -131,7 +132,7 @@ func (dev *BlockDevice) SetBlock(blk block.Block) (id []byte, err error) {
 		sz := make([]byte, 8)
 		binary.BigEndian.PutUint64(sz, blk.Size())
 		val = append(val, sz...)
-		log.Printf("BlockDevice.SetBlock setting id=%x size=%d", blk.ID(), blk.Size())
+		//log.Printf("BlockDevice.SetBlock setting id=%x size=%d", blk.ID(), blk.Size())
 		//
 		// TODO: Enabling inlining causes the network transport to fail. Investigate
 		//
@@ -164,7 +165,7 @@ func (dev *BlockDevice) SetBlock(blk block.Block) (id []byte, err error) {
 			// If we already have the block continue on to update the journal
 			//err = nil
 		}
-		log.Printf("BlockDevice.SetBlock wrote id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
+		//log.Printf("BlockDevice.SetBlock wrote id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
 
 	case block.BlockTypeTree:
 		// Write the index block directly to the journal without unmarshalling.

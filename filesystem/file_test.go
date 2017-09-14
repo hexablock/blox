@@ -200,4 +200,19 @@ func TestBloxFile_write_file(t *testing.T) {
 	}
 
 	t.Logf("Write time %v", bfh.Runtime())
+
+	// Write the file again to induce error
+	fh.Seek(0, 0)
+	bf1, err := fs.Create()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// This should pass
+	if _, err = io.Copy(bf1, fh); err != nil {
+		t.Fatal(err)
+	}
+	// Writing the index should fail
+	if err = bf1.Close(); err != block.ErrBlockExists {
+		t.Fatalf("should fail with='%v' got='%v'", block.ErrBlockExists, err)
+	}
 }
