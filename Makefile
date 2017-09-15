@@ -4,4 +4,4 @@ clean:
 	rm -rf ./tmp/*
 
 test:
-	go test -cover .
+	go test -cover ./...

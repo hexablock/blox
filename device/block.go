@@ -13,8 +13,8 @@ import (
 // Max allowed size of a DataBlock to be stored inline in the journal entry 4KB
 const maxJournalDataValSize = 4 * 1024
 
-// RawDevice represents a block storage interface specifically for data blocks. It contains
-// no smarts
+// RawDevice represents a block storage interface specifically for data blocks. It
+// contains no smarts
 type RawDevice interface {
 	// Hasher i.e. hash function for id generation
 	Hasher() hexatype.Hasher
@@ -87,9 +87,6 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 		return
 	}
 	// At this point we only have the type
-
-	//sz := binary.BigEndian.Uint64(val[1:9])
-	//blk.SetSize(sz)
 
 	var wr io.WriteCloser
 
