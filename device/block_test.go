@@ -54,10 +54,13 @@ func TestBlockDevice(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = vt.dev.SetBlock(dblk)
-	if err != block.ErrBlockExists {
-		t.Fatalf("should fail with='%v' got='%v'", block.ErrBlockExists, err)
+	if _, err = vt.raw.GetBlock(dblk.ID()); err != nil {
+		t.Fatal(err)
 	}
+	// if _, err = vt.dev.SetBlock(dblk); err != block.ErrBlockExists {
+	// 	t.Fatalf("should fail with='%v' got='%v'", block.ErrBlockExists, err)
+	// }
+
 	// if bytes.Compare(nid, dblk.ID()) != 0 {
 	// 	t.Fatalf("id mismatch want=%x have=%x", dblk.ID(), nid)
 	// }

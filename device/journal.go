@@ -46,7 +46,7 @@ func (j *InmemJournal) Set(id, val []byte) error {
 
 // Remove removes the block from the journal and return true if the block was inline and
 // an error if it doesn't exist
-func (j *InmemJournal) Remove(id []byte) (inline bool, err error) {
+func (j *InmemJournal) Remove(id []byte) ([]byte, error) {
 	is := string(id)
 
 	j.mu.Lock()
@@ -54,15 +54,15 @@ func (j *InmemJournal) Remove(id []byte) (inline bool, err error) {
 		delete(j.m, is)
 		j.mu.Unlock()
 
-		if len(val) > 9 {
-			inline = true
-		}
+		// if len(val) > 9 {
+		// 	inline = true
+		// }
 
-		return
+		return val, nil
 	}
 	j.mu.Unlock()
 
-	return false, block.ErrBlockNotFound
+	return nil, block.ErrBlockNotFound
 }
 
 // Exists returns true if the journal contains the id

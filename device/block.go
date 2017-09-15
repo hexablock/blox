@@ -40,7 +40,7 @@ type Journal interface {
 	Exists(id []byte) bool
 	Iter(cb func(key []byte, value []byte) error) error
 	Set(id, val []byte) error
-	Remove(id []byte) (inline bool, err error)
+	Remove(id []byte) (val []byte, err error)
 	Close() error
 }
 
@@ -88,19 +88,21 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 	}
 	// At this point we only have the type
 
+	//sz := binary.BigEndian.Uint64(val[1:9])
+	//blk.SetSize(sz)
+
 	var wr io.WriteCloser
 
 	switch typ {
 	case block.BlockTypeData:
-		// Only set the size for a data block
-		sz := binary.BigEndian.Uint64(val[1:9])
-		blk.SetSize(sz)
 		// Get the remainder of the data if there is any.  This would be an inline data block.
 		// only
 		if len(val) > 9 {
+			// Create block from inline journal data.  It does not contain the size.
 			if wr, err = blk.Writer(); err == nil {
 				defer wr.Close()
-				_, err = wr.Write(val[9:])
+				_, err = wr.Write(val[1:])
+				//_, err = wr.Write(val[9:])
 			}
 		} else {
 			blk, err = dev.dev.GetBlock(id)
@@ -135,44 +137,30 @@ func (dev *BlockDevice) SetBlock(blk block.Block) (id []byte, err error) {
 	switch typ {
 	case block.BlockTypeData:
 
-		sz := make([]byte, 8)
-		binary.BigEndian.PutUint64(sz, blk.Size())
-		val = append([]byte{byte(typ)}, sz...)
-		//log.Printf("BlockDevice.SetBlock setting id=%x size=%d", blk.ID(), blk.Size())
-		//
-		// TODO: Enabling inlining causes the network transport to fail. Investigate
-		//
-
-		// if blk.Size() < maxJournalDataValSize {
-		// 	// Write data inline to the journal
-		// 	var rd io.ReadCloser
-		// 	if rd, err = blk.Reader(); err != nil {
-		// 		return
-		// 	}
-		// 	var inline []byte
-		// 	if inline, err = ioutil.ReadAll(rd); err != nil {
-		// 		return
-		// 	}
-		//
-		// 	if err = rd.Close(); err != nil {
-		// 		return
-		// 	}
-		//
-		// 	id = blk.ID()
-		// 	val = append(val, inline...)
-		//
-		// } else {
-
-		id, err = dev.dev.SetBlock(blk)
-		if err != nil {
-			if err == block.ErrBlockExists {
-				// TODO: refactor
-				dev.j.Set(id, val)
+		if blk.Size() < maxJournalDataValSize {
+			// Write data inline to the journal.
+			id, val, err = dev.journalData(blk)
+			if err != nil {
+				return
 			}
-			return nil, err
+
+		} else {
+			sz := make([]byte, 8)
+			binary.BigEndian.PutUint64(sz, blk.Size())
+			val = append([]byte{byte(typ)}, sz...)
+
+			id, err = dev.dev.SetBlock(blk)
+			if err != nil {
+				if err == block.ErrBlockExists {
+					// TODO: refactor
+					dev.j.Set(id, val)
+				}
+				return nil, err
+			}
+
 		}
 
-		log.Printf("BlockDevice.SetBlock wrote id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
+		log.Printf("DataBlock wrote id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
 
 	case block.BlockTypeTree:
 		id, val, err = dev.journalData(blk)
@@ -230,16 +218,20 @@ func (dev *BlockDevice) BlockExists(id []byte) bool {
 
 // RemoveBlock removes a block from the volume as well as journal by the given hash id
 func (dev *BlockDevice) RemoveBlock(id []byte) error {
-	inline, err := dev.j.Remove(id)
+	val, err := dev.j.Remove(id)
 	if err == nil {
-		if inline {
+		// Inline block if the length is not 9
+		if len(val) != 9 {
 			return nil
 		}
+
 	} else if err != block.ErrBlockNotFound {
 		return err
 	}
+
 	//
 	// TODO: Defer this to compaction
+	//
 	//
 	// Remove block from device.
 	return dev.dev.RemoveBlock(id)

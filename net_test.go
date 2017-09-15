@@ -33,10 +33,12 @@ func TestNetTransport(t *testing.T) {
 	if err = wr2.Close(); err != nil {
 		t.Fatal(err)
 	}
-
 	// Write to block device updating journal
-	if _, err = ts2.dev.SetBlock(blk2); err != block.ErrBlockExists {
-		t.Fatalf("should fail with='%v' got='%v'", block.ErrBlockExists, err)
+	// if _, err = ts2.dev.SetBlock(blk2); err != block.ErrBlockExists {
+	// 	t.Fatalf("should fail with='%v' got='%v'", block.ErrBlockExists, err)
+	// }
+	if _, err = ts2.dev.SetBlock(blk2); err != nil {
+		t.Fatal(err)
 	}
 
 	if blk2.Size() != uint64(len(testData)) {
