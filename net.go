@@ -84,8 +84,12 @@ func (trans *NetTransport) listen() {
 			log.Println("[ERROR]", err)
 			continue
 		}
+
+		log.Println("[DEBUG] Connection accepted:", c.RemoteAddr().String())
+
 		// Register and get wrapped connection
 		conn := trans.inbound.register(c)
+
 		// Fire off handler
 		go trans.handleConn(conn)
 	}
@@ -157,6 +161,8 @@ func (trans *NetTransport) setBlockServe(id []byte, conn *protoConn) (bool, erro
 // }
 
 func (trans *NetTransport) getBlockServe(conn *protoConn, id []byte) (bool, error) {
+	//log.Printf("[DEBUG] NetTransport.getBlockServe id=%x", id)
+
 	// Get the block from the local store
 	blk, err := trans.store.GetBlock(id)
 	if err != nil {
@@ -167,6 +173,9 @@ func (trans *NetTransport) getBlockServe(conn *protoConn, id []byte) (bool, erro
 		// Immediately close connection if the ack fails
 		return true, err
 	}
+
+	//log.Println("WRITING", blk.Type(), blk.Size())
+
 	// Write the type and size of the block.
 	if err = writeBlockTypeAndSize(conn, blk.Type(), blk.Size()); err != nil {
 		return true, err
@@ -201,7 +210,7 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 		op, id, err := conn.readRequest(trans.blockHashSize)
 		if err != nil {
 			if err != io.EOF {
-				log.Println("[ERROR] Request", err)
+				log.Println("[ERROR] Reading request:", err)
 			}
 			return
 		}
@@ -242,7 +251,7 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 		if err == nil {
 			continue
 		} else if disconnect {
-			log.Println("[ERROR]", err)
+			log.Println("[ERROR] Disconnecting:", err)
 			return
 		}
 

@@ -44,12 +44,16 @@ func writeBlockTypeAndSize(conn *protoConn, typ block.BlockType, size uint64) er
 
 func readBlockTypeAndSize(conn *protoConn) (block.BlockType, uint64, error) {
 	a := make([]byte, 9)
-	n, err := conn.Read(a)
-	if err != nil {
+	if _, err := io.ReadFull(conn, a); err != nil {
 		return block.BlockType(0), 0, err
-	} else if n != len(a) {
-		return block.BlockType(0), 0, errIncompleteRead
 	}
+
+	// n, err := conn.Read(a)
+	// if err != nil {
+	// 	return block.BlockType(0), 0, err
+	// } else if n != len(a) {
+	// 	return block.BlockType(0), 0, errIncompleteRead
+	// }
 
 	return block.BlockType(a[0]), binary.BigEndian.Uint64(a[1:]), nil
 

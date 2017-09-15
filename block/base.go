@@ -7,11 +7,10 @@ type baseBlock struct {
 	id []byte
 	// Type of block 1-byte
 	typ BlockType
-	// The size of the block.  The meaning will vary based on the type of block.
+	// The size of the block.  This is the size of the binary block data
 	size uint64
-	// This holds a file location, network address or any other uri where the data
-	// can actually be accessed.
-	//uri *url.URL
+	// This holds a file location, network address or any other uri where
+	// the data can actually be accessed.
 	uri *URI
 	// Hash function to use
 	hasher hexatype.Hasher

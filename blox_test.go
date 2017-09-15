@@ -64,7 +64,7 @@ func newTestServer() (*testServer, error) {
 		return nil, err
 	}
 	ts.rdev = rdev
-	ts.dev = device.NewBlockDevice(rdev)
+	ts.dev = device.NewBlockDevice(device.NewInmemJournal(), rdev)
 
 	ts.ln, _ = net.Listen("tcp", "127.0.0.1:0")
 	opts := DefaultNetClientOptions(ts.hasher)

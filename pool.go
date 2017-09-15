@@ -73,6 +73,7 @@ func (pool *outPool) getConn(host string) (*protoConn, error) {
 			return out, nil
 		}
 		out.Close()
+		out = nil
 	}
 
 	// Try to establish a new connection

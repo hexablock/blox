@@ -84,10 +84,9 @@ func (trans *NetClient) GetBlock(host string, id []byte) (block.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	//
-
-	if err = writeHeaderAndID(conn, Header{reqTypeGet, 0}, id); err != nil {
-		trans.pool.returnConn(conn)
+	//log.Printf("NetClient.GetBlock got connection id=%x", id)
+	if err = writeHeaderAndID(conn, Header{reqTypeGet, respOk}, id); err != nil {
+		conn.Close()
 		return nil, err
 	}
 
@@ -97,11 +96,13 @@ func (trans *NetClient) GetBlock(host string, id []byte) (block.Block, error) {
 		return nil, err
 	}
 
+	//log.Printf("NetClient.GetBlock confirmation id=%x", id)
+
 	// Create new NetBlock.  Size is the size of the network payload not to be confused
 	// with Block.Size().  That is only true for DataBlocks.
 	typ, size, err := readBlockTypeAndSize(conn)
 	if err != nil {
-		trans.pool.returnConn(conn)
+		conn.Close()
 		return nil, err
 	}
 
@@ -115,7 +116,8 @@ func (trans *NetClient) GetBlock(host string, id []byte) (block.Block, error) {
 
 	blk, err := block.New(typ, nil, trans.hasher)
 	if err != nil {
-		trans.pool.returnConn(conn)
+		//trans.pool.returnConn(conn)
+		conn.Close()
 		return nil, err
 	}
 
@@ -128,6 +130,7 @@ func (trans *NetClient) GetBlock(host string, id []byte) (block.Block, error) {
 	}
 
 	trans.pool.returnConn(conn)
+
 	err = wr.Close()
 
 	//
@@ -144,9 +147,6 @@ func (trans *NetClient) SetBlock(host string, blk block.Block) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	//log.Printf("Using id=%x local-addr=%s remote-addr=%s", blk.ID(), conn.LocalAddr().String(), host)
-	//defer trans.pool.returnConn(conn)
 
 	// Write request
 	//log.Printf("NetClient.SetBlock request op=%d id=%x", reqTypeSet, blk.ID())
@@ -185,7 +185,8 @@ func (trans *NetClient) SetBlock(host string, blk block.Block) ([]byte, error) {
 	}
 	//log.Println("Copied", blk.Size())
 
-	//defer trans.pool.returnConn(conn)
+	defer trans.pool.returnConn(conn)
+
 	// Response header
 	err = conn.readResponseHeader()
 	if err != nil {

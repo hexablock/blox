@@ -85,6 +85,9 @@ func TestIndexBlock(t *testing.T) {
 	if len(b) != 112 {
 		t.Fatalf("incomplete data have=%d", len(b))
 	}
+	if idx.Size() != 112 {
+		t.Fatalf("incomplete data have=%d", len(b))
+	}
 
 	// Get source reader
 	rd, err = idx.Reader()
