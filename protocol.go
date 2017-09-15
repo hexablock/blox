@@ -116,30 +116,15 @@ func (conn *protoConn) ReadData() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	//log.Println("PAYLOAD SIZE", sz)
+
 	// Check payload size
 	if sz > (maxFrameSize - uint64(headerSize)) {
 		return nil, errExceededPayload
 	}
+
 	// Read payload
 	p := make([]byte, sz)
-
 	_, err = io.ReadFull(conn, p)
-
-	// var c uint64
-	// for {
-	// 	if c == sz {
-	// 		break
-	// 	}
-
-	// 	var n int
-	// 	if n, err = conn.Read(p[c:]); err != nil {
-	// 		break
-	// 	}
-
-	// 	c += uint64(n)
-	// }
-	// return p, nil
 	return p, err
 }
 

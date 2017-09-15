@@ -114,7 +114,7 @@ func (trans *NetTransport) setBlockServe(id []byte, conn *protoConn) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	//log.Printf("NetTransport.setBlockServe id=%x type=%s size=%d", id, typ, size)
+	log.Printf("NetTransport.setBlockServe id=%x type=%s size=%d", id, typ, size)
 
 	//
 	// TODO: check type and create block accordingly.
@@ -204,6 +204,7 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 	// Release the connection upon exiting this function
 	defer trans.inbound.release(conn)
 
+	caddr := conn.RemoteAddr().String()
 	// Request handler loop
 	for {
 		// Get request
@@ -215,7 +216,7 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 			return
 		}
 
-		log.Printf("[DEBUG] TCP request op=%x id=%x", op, id)
+		log.Printf("[DEBUG] TCP request client=%s op=%x id=%x", caddr, op, id)
 		var disconnect bool
 
 		// Serve op
@@ -243,21 +244,23 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 			disconnect, err = trans.setBlockServe(id, conn)
 
 		default:
-			log.Printf("[ERROR] Invalid request op: %x", op)
+			log.Printf("[ERROR] Invalid request client=%s op=%x id=%x", caddr, op, id)
 			return
 
 		}
 
 		if err == nil {
+			log.Printf("[INFO] TCP response client=%s op=%x id=%x", caddr, op, id)
 			continue
 		} else if disconnect {
-			log.Println("[ERROR] Disconnecting:", err)
+			log.Printf("[ERROR] Disconnecting client=%s reason='%v'", caddr, err)
 			return
 		}
 
 		// Write error response
 		hdr := Header{op, respFail}
-		log.Printf("[DEBUG] TCP response id=%x header=%x error='%v'", id, hdr, err)
+		log.Printf("[DEBUG] TCP response client=%s header=%x id=%x error='%v'",
+			caddr, hdr, id, err)
 
 		if err = conn.WriteFrame(hdr, []byte(err.Error())); err != nil {
 			log.Printf("[ERROR] Failed to write error frame: %v", err)

@@ -122,16 +122,22 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 // SetBlock stores the block in the volume. For DataBlocks the ID is expected to be
 // present.
 func (dev *BlockDevice) SetBlock(blk block.Block) (id []byte, err error) {
+	iid := blk.ID()
+	if iid == nil || len(iid) == 0 {
+		return nil, block.ErrInvalidBlock
+	}
+
 	typ := blk.Type()
-	val := []byte{byte(typ)}
-	//log.Printf("[DEBUG] BlockDevice.SetBlock id=%x type=%s", blk.ID(), blk.Type())
+	var val []byte
+
+	log.Printf("[DEBUG] BlockDevice.SetBlock id=%x type=%s", iid, blk.Type())
 
 	switch typ {
 	case block.BlockTypeData:
 
 		sz := make([]byte, 8)
 		binary.BigEndian.PutUint64(sz, blk.Size())
-		val = append(val, sz...)
+		val = append([]byte{byte(typ)}, sz...)
 		//log.Printf("BlockDevice.SetBlock setting id=%x size=%d", blk.ID(), blk.Size())
 		//
 		// TODO: Enabling inlining causes the network transport to fail. Investigate
@@ -159,37 +165,28 @@ func (dev *BlockDevice) SetBlock(blk block.Block) (id []byte, err error) {
 
 		id, err = dev.dev.SetBlock(blk)
 		if err != nil {
-			if err != block.ErrBlockExists {
-				return nil, err
+			if err == block.ErrBlockExists {
+				// TODO: refactor
+				dev.j.Set(id, val)
 			}
-			// If we already have the block continue on to update the journal
-			//err = nil
+			return nil, err
 		}
-		//log.Printf("BlockDevice.SetBlock wrote id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
+
+		log.Printf("BlockDevice.SetBlock wrote id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
 
 	case block.BlockTypeTree:
-		// Write the index block directly to the journal without unmarshalling.
-		var bd []byte
-		if bd, err = blockReadAll(blk); err != nil {
+		id, val, err = dev.journalData(blk)
+		if err != nil {
 			return
 		}
-		// Append actual data
-		val = append(val, bd...)
-		// Calculate the hash for non-data blocks
-		id = dev.hash(val)
 
 		log.Printf("[INFO] TreeBlock set id=%x size=%d", id, blk.Size())
 
 	case block.BlockTypeIndex:
-		// Write the index block directly to the journal without unmarshalling
-		var bd []byte
-		if bd, err = blockReadAll(blk); err != nil {
+		id, val, err = dev.journalData(blk)
+		if err != nil {
 			return
 		}
-		// Append actual data
-		val = append(val, bd...)
-		// Calculate the hash for non-data blocks
-		id = dev.hash(val)
 
 		log.Printf("[INFO] IndexBlock set id=%x size=%d", id, blk.Size())
 
@@ -200,7 +197,23 @@ func (dev *BlockDevice) SetBlock(blk block.Block) (id []byte, err error) {
 	// Update the journal as needed
 	err = dev.j.Set(id, val)
 
+	log.Printf("BlockDevice.SetBlock wrote id=%x type=%s size=%d error='%v'", blk.ID(), blk.Type(), blk.Size(), err)
+
 	return
+}
+
+func (dev *BlockDevice) journalData(blk block.Block) ([]byte, []byte, error) {
+	bd, err := blockReadAll(blk)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Append actual data
+	val := append([]byte{byte(blk.Type())}, bd...)
+	// Calculate the hash for non-data blocks
+	id := dev.hash(val)
+
+	return id, val, nil
 }
 
 func (dev *BlockDevice) hash(val []byte) []byte {

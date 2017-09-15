@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"time"
 
 	"github.com/hexablock/blox/block"
@@ -158,6 +159,7 @@ func (trans *NetClient) SetBlock(host string, blk block.Block) ([]byte, error) {
 
 	// Check if block already exists
 	if err = conn.readResponseHeader(); err != nil {
+		log.Println("[ERROR]", err)
 		trans.pool.returnConn(conn)
 		return nil, err
 	}
@@ -201,6 +203,8 @@ func (trans *NetClient) SetBlock(host string, blk block.Block) ([]byte, error) {
 			err = fmt.Errorf("id mismatch %x != %x", cid, blk.ID())
 		}
 	}
+
+	log.Printf("[ERROR] NetClient.SetBlock error='%v'", err)
 
 	return cid, err
 }

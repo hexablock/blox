@@ -88,9 +88,10 @@ func (st *FileRawDevice) Exists(id []byte) bool {
 // Block.  It returns the id i.e. hash of the newly written block.  It returns a
 // ErrBlockExists if the block exists along with the id.
 func (st *FileRawDevice) SetBlock(blk block.Block) ([]byte, error) {
-	if st.Exists(blk.ID()) {
-		return blk.ID(), block.ErrBlockExists
-	}
+	// if st.Exists(blk.ID()) {
+	// 	return blk.ID(), block.ErrBlockExists
+	// }
+
 	// Get source block reader
 	src, err := blk.Reader()
 	if err != nil {
