@@ -140,6 +140,7 @@ func (dev *BlockDevice) SetBlock(blk block.Block) (id []byte, err error) {
 			if err != nil {
 				return
 			}
+			log.Printf("[DEBUG] DataBlock id=%x inline=true type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
 
 		} else {
 			sz := make([]byte, 8)
@@ -155,9 +156,8 @@ func (dev *BlockDevice) SetBlock(blk block.Block) (id []byte, err error) {
 				return nil, err
 			}
 
+			log.Printf("[DEBUG] DataBlock id=%x inline=false type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
 		}
-
-		log.Printf("DataBlock wrote id=%x type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
 
 	case block.BlockTypeTree:
 		id, val, err = dev.journalData(blk)
@@ -182,7 +182,7 @@ func (dev *BlockDevice) SetBlock(blk block.Block) (id []byte, err error) {
 	// Update the journal as needed
 	err = dev.j.Set(id, val)
 
-	log.Printf("BlockDevice.SetBlock wrote id=%x type=%s size=%d error='%v'", blk.ID(), blk.Type(), blk.Size(), err)
+	log.Printf("[DEBUG] BlockDevice.SetBlock id=%x type=%s size=%d error='%v'", blk.ID(), blk.Type(), blk.Size(), err)
 
 	return
 }

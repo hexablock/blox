@@ -114,7 +114,7 @@ func (trans *NetTransport) setBlockServe(id []byte, conn *protoConn) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	log.Printf("NetTransport.setBlockServe id=%x type=%s size=%d", id, typ, size)
+	log.Printf("[DEBUG] NetTransport.setBlockServe id=%x type=%s size=%d", id, typ, size)
 
 	//
 	// TODO: check type and create block accordingly.
@@ -250,7 +250,7 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 		}
 
 		if err == nil {
-			log.Printf("[INFO] TCP response client=%s op=%x id=%x", caddr, op, id)
+			log.Printf("[DEBUG] TCP response client=%s op=%x id=%x", caddr, op, id)
 			continue
 		} else if disconnect {
 			log.Printf("[ERROR] Disconnecting client=%s reason='%v'", caddr, err)

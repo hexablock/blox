@@ -150,7 +150,7 @@ func (pool *inPool) register(c net.Conn) *protoConn {
 // Release closes the inbound connection and de-registered it from the pool
 func (pool *inPool) release(conn *protoConn) error {
 	err := conn.Close()
-	log.Printf("[INFO] Disconnected: %s", conn.RemoteAddr().String())
+	log.Printf("[DEBUG] Disconnected: %s", conn.RemoteAddr().String())
 
 	pool.ilock.Lock()
 	if _, ok := pool.inbound[conn]; ok {

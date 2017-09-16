@@ -72,7 +72,7 @@ func (block *TreeBlock) AddNodes(nodes ...*TreeNode) {
 	sh := h.Sum(nil)
 	// Update the block id based on the latest hash calculation
 	block.id = sh[:]
-
+	// Update block size
 	block.size = uint64(len(b[1:]))
 	block.mu.Unlock()
 

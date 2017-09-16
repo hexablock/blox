@@ -67,7 +67,8 @@ func (block *FileDataBlock) Reader() (io.ReadCloser, error) {
 }
 
 // Writer returns a new writer closer to write data to the block.  It initializes a hashing
-// writer, writing the type first before returning the writer.
+// writer, writing the type first before returning the writer.  It writes to a temp file
+// first and gets moved into the path directory specified in the uri.
 func (block *FileDataBlock) Writer() (io.WriteCloser, error) {
 	// Write block to a tmp file first as we need the hash which is calculated after the
 	// complete write
@@ -129,8 +130,8 @@ func (block *FileDataBlock) Close() error {
 	return err
 }
 
-// Hash returns the hash for the DataBlock
+// TODO: Hash computes the hash of the underlying file, updates the internal hash id and
+// returns the hash
 func (block *FileDataBlock) Hash() []byte {
-	// TODO: actually compute the hash of the whole block from underlying file
 	return nil
 }

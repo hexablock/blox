@@ -5,12 +5,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"github.com/hexablock/blox/block"
 	"github.com/hexablock/blox/utils"
 	"github.com/hexablock/hexatype"
+	"github.com/hexablock/log"
 )
 
 // NetBlock is network block backed by the network connection.  It primarily is
@@ -159,7 +159,7 @@ func (trans *NetClient) SetBlock(host string, blk block.Block) ([]byte, error) {
 
 	// Check if block already exists
 	if err = conn.readResponseHeader(); err != nil {
-		log.Println("[ERROR]", err)
+		//log.Println("[ERROR] NetClient.SetBlock", err)
 		trans.pool.returnConn(conn)
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (trans *NetClient) SetBlock(host string, blk block.Block) ([]byte, error) {
 		}
 	}
 
-	log.Printf("[ERROR] NetClient.SetBlock error='%v'", err)
+	log.Printf("[DEBUG] NetClient.SetBlock id=%x error='%v'", blk.ID(), err)
 
 	return cid, err
 }

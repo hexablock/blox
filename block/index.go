@@ -59,48 +59,6 @@ func (block *IndexBlock) BlockSize() uint64 {
 	return block.blockSize
 }
 
-// Reader returns a ReadCloser to this block.  It contains a byte stream with
-// the 8-byte size, 8-byte block size followed by an ordered list of block id's.
-func (block *IndexBlock) Reader() (io.ReadCloser, error) {
-	b := block.MarshalBinary()
-	block.rbuf = bytes.NewBuffer(b[1:])
-	return block, nil
-}
-
-func (block *IndexBlock) Read(p []byte) (int, error) {
-	return block.rbuf.Read(p)
-}
-
-// Writer inits a new WriterCloser backed by hasher.  It writes the type and returns
-// the WriteCloser
-func (block *IndexBlock) Writer() (io.WriteCloser, error) {
-	block.hw = NewHasherWriter(block.hasher.New(), bytes.NewBuffer(nil))
-	err := WriteBlockType(block.hw, block.typ)
-	return block, err
-}
-
-func (block *IndexBlock) Write(p []byte) (int, error) {
-	return block.hw.Write(p)
-}
-
-// Close closes the reader buffer by setting it to nil
-func (block *IndexBlock) Close() error {
-	//if block.rbuf != nil {
-	block.rbuf = nil
-	//}
-
-	if block.hw == nil {
-		return nil
-	}
-
-	block.id = block.hw.Hash()
-	buf := block.hw.uw.(*bytes.Buffer)
-	b := buf.Bytes()
-	block.hw = nil
-	// Perform actual unmarshalling
-	return block.UnmarshalBinary(b)
-}
-
 // AddBlock adds a block to the IndexBlock at the given index.
 func (block *IndexBlock) AddBlock(index uint64, blk Block) {
 	id := blk.ID()
@@ -174,6 +132,7 @@ func (block *IndexBlock) Hash() []byte {
 	h := block.hasher.New()
 	h.Write(block.MarshalBinary())
 	sh := h.Sum(nil)
+
 	// Update internal cache
 	block.id = sh[:]
 	return block.id
@@ -231,18 +190,63 @@ func (block *IndexBlock) UnmarshalBinary(b []byte) error {
 	return nil
 }
 
+// MarshalJSON is custom json marshaller for IndexBlock
 func (block *IndexBlock) MarshalJSON() ([]byte, error) {
 	t := struct {
 		ID         string
+		Size       uint64
 		FileSize   uint64
 		BlockSize  uint64
 		BlockCount int
 	}{
 		ID:         hex.EncodeToString(block.ID()),
+		Size:       block.Size(),
 		FileSize:   block.FileSize(),
 		BlockSize:  block.BlockSize(),
 		BlockCount: block.BlockCount(),
 	}
 
 	return json.Marshal(t)
+}
+
+// Reader returns a ReadCloser to this block.  It contains a byte stream with
+// the 8-byte size, 8-byte block size followed by an ordered list of block id's.
+func (block *IndexBlock) Reader() (io.ReadCloser, error) {
+	b := block.MarshalBinary()
+	block.rbuf = bytes.NewBuffer(b[1:])
+	return block, nil
+}
+
+func (block *IndexBlock) Read(p []byte) (int, error) {
+	return block.rbuf.Read(p)
+}
+
+// Writer inits a new WriterCloser backed by hasher.  It writes the type and returns
+// the WriteCloser
+func (block *IndexBlock) Writer() (io.WriteCloser, error) {
+	block.hw = NewHasherWriter(block.hasher.New(), bytes.NewBuffer(nil))
+	err := WriteBlockType(block.hw, block.typ)
+	return block, err
+}
+
+func (block *IndexBlock) Write(p []byte) (int, error) {
+	return block.hw.Write(p)
+}
+
+// Close closes the reader buffer by setting it to nil
+func (block *IndexBlock) Close() error {
+	//if block.rbuf != nil {
+	block.rbuf = nil
+	//}
+
+	if block.hw == nil {
+		return nil
+	}
+
+	block.id = block.hw.Hash()
+	buf := block.hw.uw.(*bytes.Buffer)
+	b := buf.Bytes()
+	block.hw = nil
+	// Perform actual unmarshalling
+	return block.UnmarshalBinary(b)
 }

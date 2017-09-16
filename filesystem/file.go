@@ -3,11 +3,11 @@ package filesystem
 import (
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"github.com/hexablock/blox/block"
 	"github.com/hexablock/blox/utils"
+	"github.com/hexablock/log"
 )
 
 // BloxFile is a file on the blox file-system
@@ -97,7 +97,7 @@ func (bf *BloxFile) Write(p []byte) (int, error) {
 	case err := <-bf.done:
 		// Check for errors before performing any writes. These come from the writeBlocks
 		// go-routine
-		log.Printf("BloxFile.Write error='%v'", err)
+		log.Printf("[ERROR] BloxFile.Write error='%v'", err)
 		return 0, err
 	default:
 		return bf.w.Write(p)
