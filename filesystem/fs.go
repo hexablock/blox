@@ -36,6 +36,10 @@ func (fs *BloxFS) Name() string {
 	return "blox"
 }
 
+func (fs *BloxFS) Hasher() hexatype.Hasher {
+	return fs.hasher
+}
+
 // Create creates a new BloxFile. If successful, methods on the returned file can be used
 // for writing.  The name of the file is only available after a call to Close which writes
 // the hash id.
@@ -76,30 +80,4 @@ func (fs *BloxFS) Stat(id []byte) (os.FileInfo, error) {
 // Shutdown shuts the filesystem down performing all necessary cleanup
 func (fs *BloxFS) Shutdown() error {
 	return fs.dev.Close()
-}
-
-// retrieve the block from the device and create a BloxFile
-func bloxFileFromHash(dev BlockDevice, sh []byte) (*BloxFile, error) {
-
-	blk, err := dev.GetBlock(sh)
-	if err != nil {
-		return nil, err
-	}
-
-	fb := &filebase{dev: dev, blk: blk}
-	bf := &BloxFile{filebase: fb}
-
-	switch blk.Type() {
-	case block.BlockTypeData:
-
-	case block.BlockTypeIndex:
-		bf.idx = blk.(*block.IndexBlock)
-
-	case block.BlockTypeTree:
-		bf.tree = blk.(*block.TreeBlock)
-
-	default:
-		return nil, block.ErrInvalidBlockType
-	}
-	return bf, nil
 }
