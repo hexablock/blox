@@ -36,6 +36,7 @@ func (fs *BloxFS) Name() string {
 	return "blox"
 }
 
+// Hasher returns the underlying hash function used
 func (fs *BloxFS) Hasher() hexatype.Hasher {
 	return fs.hasher
 }
@@ -45,7 +46,7 @@ func (fs *BloxFS) Hasher() hexatype.Hasher {
 // the hash id.
 func (fs *BloxFS) Create() (*BloxFile, error) {
 	idx := block.NewIndexBlock(nil, fs.hasher)
-	fb := &filebase{dev: fs.dev, blk: idx}
+	fb := &filebase{dev: fs.dev, blk: idx, flag: os.O_WRONLY}
 
 	bf := &BloxFile{filebase: fb, idx: idx}
 	bf.initWriter(defaulBlockBufSize)
@@ -60,6 +61,7 @@ func (fs *BloxFS) Open(sh []byte) (*BloxFile, error) {
 	// Load BloxFile from the hash
 	bf, err := bloxFileFromHash(fs.dev, sh)
 	if err == nil {
+		bf.flag = os.O_RDONLY
 		// Init for reading
 		bf.initReader(defaulBlockBufSize)
 	}

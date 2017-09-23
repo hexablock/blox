@@ -236,11 +236,11 @@ func (bf *BloxFile) closeWriter() error {
 }
 
 func (bf *BloxFile) closeReader() error {
-	// This channel should already be closed
+	// Channel should already be closed.  Reset it
 	bf.rblk = nil
 	// This should be closed
 	bf.rfd = nil
-	// bytes read
+	// Reset bytes read
 	bf.rc = 0
 
 	return nil

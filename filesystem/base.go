@@ -13,12 +13,18 @@ type filebase struct {
 	name string
 	// POSIX mode useful when writing
 	mode os.FileMode
+	// Flag/s for when file is opened
+	flag int
 	// File modification time
 	mtime time.Time
 	// Source block
 	blk block.Block
 	// Device holding the root block
 	dev BlockDevice
+}
+
+func (fb *filebase) Flags() int {
+	return fb.flag
 }
 
 // IsDir return true if the underlying block is a tree block.
