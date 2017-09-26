@@ -247,15 +247,23 @@ func (bf *BloxFile) closeReader() error {
 }
 
 // Runtime returns the runtime for a complete file write or read depending on usage.  The value
-// will only be valid once Close is called.
+// will only be valid once Close is called.  If close is never called then the value will be zero
 func (bf *BloxFile) Runtime() time.Duration {
-	return bf.end.Sub(bf.start)
+	delta := bf.end.Sub(bf.start)
+	if delta < 0 {
+		return 0
+	}
+	return delta
+}
+
+func (bf *BloxFile) setEndTime() {
+	bf.end = time.Now()
 }
 
 // Close closes the writer if this is a writeable file otherwise it closes the reader.
 func (bf *BloxFile) Close() error {
 	// Set the end time after we have closed the handle
-	defer func() { bf.end = time.Now() }()
+	defer bf.setEndTime()
 
 	// Check if writer needs closing
 	if bf.w != nil {

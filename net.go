@@ -126,7 +126,7 @@ func (trans *NetTransport) setBlockServe(id []byte, conn *protoConn) (bool, erro
 	netblk := block.NewStreamedBlock(typ, uri, trans.hasher, conn, size)
 	nid, err := trans.store.SetBlock(netblk)
 	if err != nil {
-		log.Printf("[ERROR] setBlockServe %v", err)
+		//log.Printf("[ERROR] setBlockServe %v", err)
 		return false, err
 	}
 
