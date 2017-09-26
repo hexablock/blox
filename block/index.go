@@ -110,7 +110,6 @@ func (block *IndexBlock) Blocks() [][]byte {
 	if (block.fileSize % block.blockSize) != 0 {
 		bcount++
 	}
-
 	ids := make([][]byte, bcount)
 	for i := range block.blocks {
 		ids[i-1] = block.blocks[i]
@@ -146,9 +145,10 @@ func (block *IndexBlock) MarshalBinary() []byte {
 	bsz := make([]byte, 8)
 	binary.BigEndian.PutUint64(bsz, block.blockSize)
 
+	out := append(append([]byte{byte(block.typ)}, sz...), bsz...)
+
 	// Write all the block ids in order
 	ids := block.Blocks()
-	out := append(append([]byte{byte(block.typ)}, sz...), bsz...)
 	for _, id := range ids {
 		out = append(out, id...)
 	}
@@ -167,10 +167,17 @@ func (block *IndexBlock) UnmarshalBinary(b []byte) error {
 	block.fileSize = binary.BigEndian.Uint64(b[1:9])
 	block.blockSize = binary.BigEndian.Uint64(b[9:17])
 
-	bcount := block.fileSize / block.blockSize
-	if (block.fileSize % block.blockSize) != 0 {
-		bcount++
+	// Block count
+	var bcount uint64
+	if block.fileSize < block.blockSize {
+		bcount = 1
+	} else {
+		bcount = block.fileSize / block.blockSize
+		if (block.fileSize % block.blockSize) != 0 {
+			bcount++
+		}
 	}
+
 	// No entries
 	if bcount == 0 {
 		return nil

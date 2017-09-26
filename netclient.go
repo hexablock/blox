@@ -159,7 +159,7 @@ func (trans *NetClient) SetBlock(host string, blk block.Block) ([]byte, error) {
 
 	// Check if block already exists
 	if err = conn.readResponseHeader(); err != nil {
-		//log.Println("[ERROR] NetClient.SetBlock", err)
+		log.Println("[INFO] NetClient.SetBlock returning conn", err)
 		trans.pool.returnConn(conn)
 		return nil, err
 	}

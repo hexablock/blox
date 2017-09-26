@@ -2,6 +2,7 @@ package block
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -34,6 +35,21 @@ func NewDirTreeNode(name string, addr []byte) *TreeNode {
 		Type:    BlockTypeTree,
 		Mode:    os.ModePerm | os.ModeDir,
 	}
+}
+
+func (node *TreeNode) MarshalJSON() ([]byte, error) {
+	t := struct {
+		Name    string
+		Address string
+		Type    BlockType
+		Mode    string
+	}{
+		node.Name,
+		hex.EncodeToString(node.Address),
+		node.Type,
+		node.Mode.String(),
+	}
+	return json.Marshal(t)
 }
 
 // MarshalBinary marshals the TreeNode into bytes.  It writes mode, space, block

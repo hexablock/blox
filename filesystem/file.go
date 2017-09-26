@@ -221,6 +221,10 @@ func (bf *BloxFile) closeWriter() error {
 	}
 
 	idx := bf.idx
+	if idx.BlockCount() == 0 {
+		return fmt.Errorf("index does not contain blocks")
+	}
+
 	// Hash the index to to update the internal hash id after all blocks are written
 	idx.Hash()
 

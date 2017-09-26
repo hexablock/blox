@@ -2,6 +2,8 @@ package block
 
 import (
 	"bytes"
+	"encoding/hex"
+	"encoding/json"
 	"io"
 	"os"
 	"sort"
@@ -28,6 +30,28 @@ func NewTreeBlock(uri *URI, hasher hexatype.Hasher) *TreeBlock {
 		nodes:     make(map[string]*TreeNode),
 		baseBlock: &baseBlock{uri: uri, typ: BlockTypeTree, hasher: hasher},
 	}
+}
+
+func (block *TreeBlock) MarshalJSON() ([]byte, error) {
+	t := struct {
+		ID    string
+		Size  uint64
+		Nodes []TreeNode
+	}{
+		ID:    hex.EncodeToString(block.id),
+		Size:  block.size,
+		Nodes: make([]TreeNode, len(block.nodes)),
+	}
+
+	var i int
+	block.mu.RLock()
+	for _, v := range block.nodes {
+		t.Nodes[i] = *v
+		i++
+	}
+	block.mu.RUnlock()
+
+	return json.Marshal(t)
 }
 
 // NodeCount returns the total number of child nodes to the TreeBlock
@@ -83,9 +107,12 @@ func (block *TreeBlock) UnmarshalBinary(b []byte) error {
 	block.typ = BlockType(b[0])
 	block.size = uint64(len(b[1:]))
 
-	//fmt.Printf("%s\n", b[1:])
+	if len(b[1:]) == 0 {
+		return nil
+	}
+
+	//fmt.Printf("|%s|\n", b[1:])
 	list := bytes.Split(b[1:], []byte("\n"))
-	//fmt.Println(len(list))
 	for _, l := range list {
 		tn := &TreeNode{}
 		if err := tn.UnmarshalBinary(l); err != nil {
@@ -100,6 +127,10 @@ func (block *TreeBlock) UnmarshalBinary(b []byte) error {
 // MarshalBinary marshals the TreeNodes sorted by name.  It writes a 1-byte type followed
 // by each node 1 per line.
 func (block *TreeBlock) MarshalBinary() []byte {
+	if len(block.nodes) == 0 {
+		return []byte{byte(block.typ)}
+	}
+
 	keys := block.sortedKeys()
 	list := make([][]byte, 0, len(keys))
 

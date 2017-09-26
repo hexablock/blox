@@ -141,3 +141,31 @@ func TestIndexBlock(t *testing.T) {
 		t.Fatalf("id mismatch want=%x have=%x", idx.ID(), nidx.ID())
 	}
 }
+
+func TestIndexBlock_smallfile(t *testing.T) {
+	i1 := NewIndexBlock(nil, &hexatype.SHA256Hasher{})
+	i1.SetBlockSize(1024)
+	i1.SetFileSize(12)
+
+	bin := i1.MarshalBinary()
+	if len(bin) != 17 {
+		t.Fatal("should have 17 bytes")
+	}
+
+	i2 := NewIndexBlock(nil, &hexatype.SHA256Hasher{})
+	if err := i2.UnmarshalBinary(bin); err != nil {
+		t.Fatal(err)
+	}
+
+	if i1.Size() != i2.Size() {
+		t.Fatal("size mismatch")
+	}
+
+	if i1.FileSize() != i2.FileSize() {
+		t.Fatal("size mismatch")
+	}
+
+	if i1.BlockSize() != i2.BlockSize() {
+		t.Fatal("size mismatch")
+	}
+}

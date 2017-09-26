@@ -127,7 +127,12 @@ func (wr *ShardWriter) Write(p []byte) (n int, err error) {
 // create a new shard and submit to the block generator
 func (wr *ShardWriter) genblock() {
 	buf := wr.buf.Bytes()
-	data := make([]byte, len(buf))
+	bufLen := len(buf)
+	if bufLen == 0 {
+		return
+	}
+
+	data := make([]byte, bufLen)
 	copy(data, buf)
 	wr.out <- &Shard{Index: wr.idx, Data: data, Offset: wr.idx * wr.bs}
 }
