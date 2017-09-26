@@ -13,6 +13,10 @@ import (
 	"github.com/hexablock/log"
 )
 
+// TODO
+// This needs to be re-done to allow connection re-use.  Consider using http
+// with re-usable connections to simplify all of net
+
 const (
 	//reqTypeNew byte = iota + 3
 	reqTypeGet byte = iota + 3
@@ -141,25 +145,6 @@ func (trans *NetTransport) setBlockServe(id []byte, conn *protoConn) (bool, erro
 	return false, nil
 }
 
-// func (trans *NetTransport) newBlockServe(conn *protoConn) (bool, error) {
-// 	typ, err := block.ReadBlockType(conn)
-// 	if err != nil {
-// 		return true, err
-// 	}
-//
-// 	nblk, _ := trans.store.NewBlock(typ)
-// 	wr, err := nblk.Writer()
-// 	if err == nil {
-// 		defer wr.Close()
-//
-// 		if _, err = io.Copy(wr, conn); err == nil {
-// 			return false, nil
-// 		}
-// 	}
-//
-// 	return true, err
-// }
-
 func (trans *NetTransport) getBlockServe(conn *protoConn, id []byte) (bool, error) {
 	//log.Printf("[DEBUG] NetTransport.getBlockServe id=%x", id)
 
@@ -221,14 +206,6 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 
 		// Serve op
 		switch op {
-		// case reqTypeNew:
-		// 	var disconnect bool
-		// 	if disconnect, err = trans.newBlockServe(conn); err != nil {
-		// 		if disconnect {
-		// 			log.Println("[ERROR]", err)
-		// 			return
-		// 		}
-		// 	}
 
 		case reqTypeGet:
 			disconnect, err = trans.getBlockServe(conn, id)
