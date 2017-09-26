@@ -62,8 +62,10 @@ func (fs *BloxFS) Open(sh []byte) (*BloxFile, error) {
 	bf, err := bloxFileFromHash(fs.dev, sh)
 	if err == nil {
 		bf.flag = os.O_RDONLY
-		// Init for reading
-		bf.initReader(defaulBlockBufSize)
+		// Init for reading for files only
+		if !bf.IsDir() {
+			bf.initReader(defaulBlockBufSize)
+		}
 	}
 	return bf, err
 }

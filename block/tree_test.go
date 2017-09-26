@@ -10,10 +10,7 @@ import (
 )
 
 func TestTreeNode(t *testing.T) {
-	tn := &TreeNode{
-		Name:    "test",
-		Type:    BlockTypeData,
-		Address: []byte("foo"), Mode: os.ModePerm | os.ModeDir}
+	tn := NewDirTreeNode("test", []byte("foo"))
 	bn := tn.MarshalBinary()
 
 	tn1 := &TreeNode{}
@@ -36,9 +33,10 @@ func TestTreeBlock(t *testing.T) {
 	tt := []*TreeNode{
 		{Name: "test1", Address: []byte("foo"), Mode: os.ModePerm | os.ModeDir, Type: BlockTypeData},
 		{Name: "test2", Address: []byte("foo"), Mode: os.ModePerm | os.ModeDir, Type: BlockTypeData},
-		{Name: "test3", Address: []byte("foo"), Mode: os.ModePerm | os.ModeDir, Type: BlockTypeIndex},
-		{Name: "test4", Address: []byte("foo"), Mode: os.ModePerm | os.ModeDir, Type: BlockTypeTree},
+		NewFileTreeNode("test3", []byte("foo")),
+		NewDirTreeNode("test4", []byte("foo")),
 	}
+
 	hasher := &hexatype.SHA256Hasher{}
 	uri := NewURI("memory://")
 	tb := NewTreeBlock(uri, hasher)

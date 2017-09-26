@@ -16,6 +16,26 @@ type TreeNode struct {
 	Mode    os.FileMode
 }
 
+//NewFileTreeNode inits a new TreeNode for a file
+func NewFileTreeNode(name string, addr []byte) *TreeNode {
+	return &TreeNode{
+		Name:    name,
+		Address: addr,
+		Type:    BlockTypeIndex,
+		Mode:    os.ModePerm,
+	}
+}
+
+//NewDirTreeNode inits a new TreeNode for a directory
+func NewDirTreeNode(name string, addr []byte) *TreeNode {
+	return &TreeNode{
+		Name:    name,
+		Address: addr,
+		Type:    BlockTypeTree,
+		Mode:    os.ModePerm | os.ModeDir,
+	}
+}
+
 // MarshalBinary marshals the TreeNode into bytes.  It writes mode, space, block
 // type, space, hash address, space, and finally the name as a string and returns the
 // byte representation of the string

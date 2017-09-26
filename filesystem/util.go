@@ -10,6 +10,11 @@ func bloxFileFromHash(dev BlockDevice, sh []byte) (*BloxFile, error) {
 		return nil, err
 	}
 
+	return bloxFileFromBlock(dev, blk)
+}
+
+func bloxFileFromBlock(dev BlockDevice, blk block.Block) (*BloxFile, error) {
+
 	fb := &filebase{dev: dev, blk: blk}
 	bf := &BloxFile{filebase: fb}
 

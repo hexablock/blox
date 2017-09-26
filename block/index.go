@@ -198,13 +198,20 @@ func (block *IndexBlock) MarshalJSON() ([]byte, error) {
 		FileSize   uint64
 		BlockSize  uint64
 		BlockCount int
+		Blocks     []string
 	}{
 		ID:         hex.EncodeToString(block.ID()),
 		Size:       block.Size(),
 		FileSize:   block.FileSize(),
 		BlockSize:  block.BlockSize(),
 		BlockCount: block.BlockCount(),
+		Blocks:     make([]string, len(block.blocks)),
 	}
+
+	block.Iter(func(idx uint64, id []byte) error {
+		t.Blocks[idx] = hex.EncodeToString(id)
+		return nil
+	})
 
 	return json.Marshal(t)
 }

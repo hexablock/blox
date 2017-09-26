@@ -32,9 +32,7 @@ func TestBloxFS_Dir(t *testing.T) {
 
 	f1.Close()
 	t.Logf("%s %x", f1.Name(), f1.blk.ID())
-	tn1 := &block.TreeNode{
-		Name:    filepath.Base(fh1.Name()),
-		Address: f1.blk.ID(), Type: block.BlockTypeIndex}
+	tn1 := block.NewFileTreeNode(filepath.Base(fh1.Name()), f1.blk.ID())
 
 	// Second
 	fh2, _ := os.Open(testfile1)
@@ -51,10 +49,8 @@ func TestBloxFS_Dir(t *testing.T) {
 	}
 
 	f2.Close()
-	//t.Logf("%s %x", f2.Name(), f2.blk.ID())
-	tn2 := &block.TreeNode{
-		Name:    filepath.Base(fh2.Name()),
-		Address: f2.blk.ID(), Type: block.BlockTypeIndex}
+
+	tn2 := block.NewFileTreeNode(filepath.Base(fh2.Name()), f2.blk.ID())
 
 	tree := block.NewTreeBlock(nil, fst.hasher)
 	tree.AddNodes(tn1, tn2)
