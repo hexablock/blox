@@ -1,7 +1,6 @@
 package device
 
 import (
-	"encoding/binary"
 	"io"
 	"io/ioutil"
 
@@ -10,7 +9,8 @@ import (
 	"github.com/hexablock/log"
 )
 
-// Max allowed size of a DataBlock to be stored inline in the journal entry 4KB
+// maxJournalDataValSize is the max allowed size of a DataBlock to be stored
+// inline in the journal entry 4KB
 const maxJournalDataValSize = 4 * 1024
 
 // RawDevice represents a block storage interface specifically for data blocks. It
@@ -36,11 +36,11 @@ type RawDevice interface {
 // IndexBlock and TreeBlock are stored only in the journal.  DataBlock is stored in the
 // journal if the size is smaller than the allowed size.
 type Journal interface {
-	Get(id []byte) ([]byte, error)
+	Get(id []byte) (*JournalEntry, error)
 	Exists(id []byte) bool
-	Iter(cb func(key []byte, value []byte) error) error
-	Set(id, val []byte) error
-	Remove(id []byte) (val []byte, err error)
+	Iter(cb func(*JournalEntry) error) error
+	Set(jent *JournalEntry) error
+	Remove(id []byte) (*JournalEntry, error)
 	Close() error
 }
 
@@ -76,39 +76,38 @@ func (dev *BlockDevice) Hasher() hexatype.Hasher {
 // must be used to access the block contents.
 func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 	// Check journal for the block
-	val, err := dev.j.Get(id)
+	jent, err := dev.j.Get(id)
 	if err != nil {
 		return nil, err
 	}
 
+	//fmt.Printf("BlockDevice.Journal.Get type=%s size=%d\n", jent.Type(), jent.size)
+
 	// Initialize a new in-memory block
-	typ := block.BlockType(val[0])
-	if blk, err = block.New(typ, nil, dev.hasher); err != nil {
+	if blk, err = block.New(jent.Type(), nil, dev.hasher); err != nil {
 		return
 	}
-	// At this point we only have the type
 
 	var wr io.WriteCloser
 
-	switch typ {
+	switch jent.Type() {
 	case block.BlockTypeData:
 		// Get the remainder of the data if there is any.  This would be an inline data block.
 		// only
-		if len(val) > 9 {
+		if jent.size <= maxJournalDataValSize {
 			// Create block from inline journal data.  It does not contain the size.
 			if wr, err = blk.Writer(); err == nil {
 				defer wr.Close()
-				_, err = wr.Write(val[1:])
-				//_, err = wr.Write(val[9:])
+				_, err = wr.Write(jent.data)
 			}
 		} else {
-			blk, err = dev.dev.GetBlock(id)
+			blk, err = dev.dev.GetBlock(jent.id)
 		}
 
 	case block.BlockTypeIndex, block.BlockTypeTree:
 		if wr, err = blk.Writer(); err == nil {
 			defer wr.Close()
-			_, err = wr.Write(val[1:])
+			_, err = wr.Write(jent.data)
 		}
 
 	default:
@@ -120,92 +119,58 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 
 // SetBlock stores the block in the volume. For DataBlocks the ID is expected to be
 // present.
-func (dev *BlockDevice) SetBlock(blk block.Block) (id []byte, err error) {
-	iid := blk.ID()
-	if iid == nil || len(iid) == 0 {
+func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
+
+	typ := blk.Type()
+	jent := &JournalEntry{id: blk.ID(), size: blk.Size(), typ: typ}
+	if jent.id == nil || len(jent.id) == 0 {
 		return nil, block.ErrInvalidBlock
 	}
 
-	typ := blk.Type()
-	var val []byte
-
-	log.Printf("[DEBUG] BlockDevice.SetBlock id=%x type=%s", iid, blk.Type())
+	//log.Printf("BlockDevice.SetBlock id=%x type=%s size=%d", jent.id, typ, jent.size)
 
 	switch typ {
 	case block.BlockTypeData:
-
-		if blk.Size() < maxJournalDataValSize {
-			// Write data inline to the journal.
-			id, val, err = dev.journalData(blk)
+		if jent.size < maxJournalDataValSize {
+			bd, err := blockReadAll(blk)
 			if err != nil {
-				return
-			}
-			log.Printf("[DEBUG] DataBlock id=%x inline=true type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
-
-		} else {
-			sz := make([]byte, 8)
-			binary.BigEndian.PutUint64(sz, blk.Size())
-			val = append([]byte{byte(typ)}, sz...)
-
-			id, err = dev.dev.SetBlock(blk)
-			if err != nil {
-				if err == block.ErrBlockExists {
-					// TODO: refactor
-					dev.j.Set(id, val)
-				}
 				return nil, err
 			}
-
-			log.Printf("[DEBUG] DataBlock id=%x inline=false type=%s size=%d", blk.ID(), blk.Type(), blk.Size())
+			jent.data = bd
+			break
 		}
+
+		id, err := dev.dev.SetBlock(blk)
+		if err != nil && err != block.ErrBlockExists {
+			return nil, err
+		}
+		// use the device returned id
+		jent.id = id
 
 	case block.BlockTypeTree:
-		id, val, err = dev.journalData(blk)
+		bd, err := blockReadAll(blk)
 		if err != nil {
-			return
+			return nil, err
 		}
-
-		log.Printf("[INFO] TreeBlock set id=%x size=%d", id, blk.Size())
+		jent.data = bd
 
 	case block.BlockTypeIndex:
-		id, val, err = dev.journalData(blk)
+		bd, err := blockReadAll(blk)
 		if err != nil {
-			return
+			return nil, err
 		}
-
-		log.Printf("[INFO] IndexBlock set id=%x size=%d", id, blk.Size())
+		jent.data = bd
 
 	default:
 		return nil, block.ErrInvalidBlockType
 	}
 
 	// Update the journal as needed
-	err = dev.j.Set(id, val)
+	err := dev.j.Set(jent)
 
 	log.Printf("[DEBUG] BlockDevice.SetBlock id=%x type=%s size=%d error='%v'", blk.ID(), blk.Type(), blk.Size(), err)
 
-	return
-}
-
-func (dev *BlockDevice) journalData(blk block.Block) ([]byte, []byte, error) {
-	bd, err := blockReadAll(blk)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Append actual data
-	val := append([]byte{byte(blk.Type())}, bd...)
-	// Calculate the hash for non-data blocks
-	id := dev.hash(val)
-
-	return id, val, nil
-}
-
-func (dev *BlockDevice) hash(val []byte) []byte {
-	h := dev.hasher.New()
-	h.Write(val)
-	sh := h.Sum(nil)
-	return sh[:]
+	return jent.id, err
 }
 
 // BlockExists returns true if the id exists in the journal
@@ -215,10 +180,15 @@ func (dev *BlockDevice) BlockExists(id []byte) bool {
 
 // RemoveBlock removes a block from the volume as well as journal by the given hash id
 func (dev *BlockDevice) RemoveBlock(id []byte) error {
-	val, err := dev.j.Remove(id)
+	jent, err := dev.j.Remove(id)
 	if err == nil {
-		// Inline block if the length is not 9
-		if len(val) != 9 {
+		// Inline block
+		switch jent.Type() {
+		case block.BlockTypeData:
+			if jent.size <= maxJournalDataValSize {
+				return nil
+			}
+		case block.BlockTypeIndex, block.BlockTypeTree:
 			return nil
 		}
 
@@ -226,11 +196,11 @@ func (dev *BlockDevice) RemoveBlock(id []byte) error {
 		return err
 	}
 
+	// Remove block from device.
 	//
 	// TODO: Defer this to compaction
 	//
-	//
-	// Remove block from device.
+
 	return dev.dev.RemoveBlock(id)
 }
 

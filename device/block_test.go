@@ -83,7 +83,7 @@ func TestBlockDevice(t *testing.T) {
 		t.Fatal(err)
 	}
 	if jblk.Size() != data.Size() {
-		t.Fatal("size mismatch", jblk.Size(), data.Size())
+		t.Fatalf("size mismatch want=%d have=%d", data.Size(), jblk.Size())
 	}
 
 	iblk := block.NewIndexBlock(nil, vt.hasher)
@@ -102,8 +102,13 @@ func TestBlockDevice(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if iblk.Size() != idx2.Size() {
+		t.Fatalf("size mismatch want=%d have=%d", iblk.Size(), idx2.Size())
+	}
+
 	if bytes.Compare(idx2.ID(), iid) != 0 {
-		t.Fatalf("id mismatch %x != %x", idx2.ID(), iid)
+		t.Fatalf("id mismatch want=%x have=%x", iid, idx2.ID())
 	}
 
 	idxt := idx2.(*block.IndexBlock)

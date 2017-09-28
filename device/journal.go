@@ -6,20 +6,47 @@ import (
 	"github.com/hexablock/blox/block"
 )
 
+type JournalEntry struct {
+	id   []byte
+	typ  block.BlockType
+	size uint64
+	data []byte
+}
+
+// ID returns the id for the entry
+func (je *JournalEntry) ID() []byte {
+	return je.id
+}
+
+// Type returns the type of block
+func (je *JournalEntry) Type() block.BlockType {
+	return je.typ
+}
+
+// Size returns the actual consumed size of the block
+func (je *JournalEntry) Size() uint64 {
+	return je.size
+}
+
+// Data returns the raw block data as returned from the block Writer
+func (je *JournalEntry) Data() []byte {
+	return je.data
+}
+
 // InmemJournal implements an in-memory Journal interface
 type InmemJournal struct {
 	mu sync.RWMutex
-	m  map[string][]byte
+	m  map[string]*JournalEntry
 }
 
 // NewInmemJournal inits a new in-memory journal.
 func NewInmemJournal() *InmemJournal {
-	return &InmemJournal{m: make(map[string][]byte)}
+	return &InmemJournal{m: make(map[string]*JournalEntry)}
 }
 
 // Get retreives the value for the given id.  It returns a ErrNotFoundError if the
 // id is not found
-func (j *InmemJournal) Get(id []byte) ([]byte, error) {
+func (j *InmemJournal) Get(id []byte) (*JournalEntry, error) {
 	j.mu.RLock()
 	val, ok := j.m[string(id)]
 	if ok {
@@ -32,23 +59,24 @@ func (j *InmemJournal) Get(id []byte) ([]byte, error) {
 
 // Set sets the id to the value in the journal.  It returns an error if the block
 // exists.
-func (j *InmemJournal) Set(id, val []byte) error {
+func (j *InmemJournal) Set(entry *JournalEntry) error {
+	k := string(entry.id)
 	j.mu.RLock()
-	if _, ok := j.m[string(id)]; ok {
+	if _, ok := j.m[k]; ok {
 		j.mu.RUnlock()
 		return block.ErrBlockExists
 	}
 	j.mu.RUnlock()
 
 	j.mu.Lock()
-	j.m[string(id)] = val
+	j.m[k] = entry
 	j.mu.Unlock()
 	return nil
 }
 
 // Remove removes the block from the journal and return true if the block was inline
 // and an error if it doesn't exist
-func (j *InmemJournal) Remove(id []byte) ([]byte, error) {
+func (j *InmemJournal) Remove(id []byte) (*JournalEntry, error) {
 	is := string(id)
 
 	j.mu.Lock()
@@ -73,13 +101,13 @@ func (j *InmemJournal) Exists(id []byte) bool {
 
 // Iter obtains a read-lock and interates over each key-value pair issuing the
 // callback for each
-func (j *InmemJournal) Iter(cb func(key, value []byte) error) error {
+func (j *InmemJournal) Iter(cb func(*JournalEntry) error) error {
 	var err error
 
 	j.mu.RLock()
-	for k, val := range j.m {
-		key := []byte(k)
-		if err = cb(key, val); err != nil {
+	for _, val := range j.m {
+		//key := []byte(k)
+		if err = cb(val); err != nil {
 			break
 		}
 	}
