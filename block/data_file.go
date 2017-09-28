@@ -130,8 +130,9 @@ func (block *FileDataBlock) Close() error {
 	return err
 }
 
-// TODO: Hash computes the hash of the underlying file, updates the internal hash id and
+// Hash computes the hash of the underlying file, updates the internal hash id and
 // returns the hash
 func (block *FileDataBlock) Hash() []byte {
+	// TODO:
 	return nil
 }

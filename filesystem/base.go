@@ -21,6 +21,8 @@ type filebase struct {
 	blk block.Block
 	// Device holding the root block
 	dev BlockDevice
+	// number of go-routines for reading or writing
+	numWorkers int
 }
 
 func (fb *filebase) Flags() int {

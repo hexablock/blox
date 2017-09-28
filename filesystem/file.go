@@ -3,6 +3,7 @@ package filesystem
 import (
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/hexablock/blox/block"
@@ -32,22 +33,34 @@ type BloxFile struct {
 	end   time.Time
 }
 
+func (bf *BloxFile) initIO() {
+	bf.done = make(chan error, 1)
+	if bf.numWorkers < 1 {
+		bf.numWorkers = 1
+	}
+	bf.start = time.Now()
+}
+
 // initialize file for writing
 func (bf *BloxFile) initWriter(bufSize int) {
 	bf.w = utils.NewShardWriter(bf.idx.BlockSize(), bufSize)
-	bf.done = make(chan error, 1)
+	bf.initIO()
+	// bf.done = make(chan error, 1)
+	// bf.start = time.Now()
 
-	bf.start = time.Now()
-
-	go bf.writeBlocks()
+	// if bf.numWorkers < 1 {
+	// 	bf.numWorkers = 1
+	// }
+	//go bf.writeBlocks()
+	go bf.startWorkers()
 }
 
 // initialize file for reading
 func (bf *BloxFile) initReader(bufSize int) {
 	bf.rblk = make(chan block.Block, bufSize)
-	bf.done = make(chan error, 1)
-
-	bf.start = time.Now()
+	bf.initIO()
+	// bf.done = make(chan error, 1)
+	// bf.start = time.Now()
 
 	go bf.fetchBlocks()
 }
@@ -173,18 +186,60 @@ func (bf *BloxFile) Read(p []byte) (int, error) {
 	return n, err
 }
 
+func (bf *BloxFile) startWorkers() {
+	// if bf.numWorkers < 2 {
+	// 	go bf.writeBlocks()
+	// 	return
+	// }
+
+	var wg sync.WaitGroup
+	wg.Add(bf.numWorkers)
+
+	done := make(chan error, 1)
+	wait := make(chan struct{}, 1)
+
+	for i := 0; i < bf.numWorkers; i++ {
+		go func() {
+
+			if err := bf.writeBlocks(); err != nil {
+				done <- err
+			}
+
+			wg.Done()
+
+		}()
+
+	}
+
+	go func() {
+		wg.Wait()
+		wait <- struct{}{}
+	}()
+
+	var err error
+	select {
+	case <-wait:
+	case err = <-done:
+		bf.w.Close()
+		<-wait
+	}
+
+	bf.done <- err
+}
+
 // consume the channel of shards, generating blocks and setting them to the device.  On
 // each successful block written, the index is also updated with the newly written id.
-func (bf *BloxFile) writeBlocks() {
-
+func (bf *BloxFile) writeBlocks() error {
 	shards := bf.w.Shards()
+
 	for shard := range shards {
 		// Generate a new block from the shard
 		blk, err := bf.newBlockFromShard(shard)
 		if err != nil {
 			//log.Printf("[ERROR] Failed to create block index=%d offset=%d error='%v'", shard.Index, shard.Offset, err)
-			bf.done <- err
-			return
+			//bf.done <- err
+			//return
+			return err
 		}
 
 		// Set the block to the BlockDevice
@@ -200,11 +255,13 @@ func (bf *BloxFile) writeBlocks() {
 
 		//log.Printf("[ERROR] Failed to persist block id=%x index=%d offset=%d error='%v'",
 		//	blk.ID(), shard.Index, shard.Offset, err)
-		bf.done <- err
-		return
+		//bf.done <- err
+		//return
+		return err
 	}
 
-	bf.done <- nil
+	//bf.done <- nil
+	return nil
 }
 
 // Close closes the sharder and waits for all blocks to be consumed.  It then writes out

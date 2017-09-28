@@ -14,8 +14,7 @@ func bloxFileFromHash(dev BlockDevice, sh []byte) (*BloxFile, error) {
 }
 
 func bloxFileFromBlock(dev BlockDevice, blk block.Block) (*BloxFile, error) {
-
-	fb := &filebase{dev: dev, blk: blk}
+	fb := &filebase{dev: dev, blk: blk, numWorkers: 1}
 	bf := &BloxFile{filebase: fb}
 
 	switch blk.Type() {
