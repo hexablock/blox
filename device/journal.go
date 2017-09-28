@@ -12,12 +12,13 @@ type InmemJournal struct {
 	m  map[string][]byte
 }
 
+// NewInmemJournal inits a new in-memory journal.
 func NewInmemJournal() *InmemJournal {
 	return &InmemJournal{m: make(map[string][]byte)}
 }
 
-// Get retreives the value for the given id.  It returns a ErrNotFoundError if the id is not
-// found
+// Get retreives the value for the given id.  It returns a ErrNotFoundError if the
+// id is not found
 func (j *InmemJournal) Get(id []byte) ([]byte, error) {
 	j.mu.RLock()
 	val, ok := j.m[string(id)]
@@ -29,7 +30,8 @@ func (j *InmemJournal) Get(id []byte) ([]byte, error) {
 	return nil, block.ErrBlockNotFound
 }
 
-// Set sets the id to the value in the journal.  It returns an error if the block exists.
+// Set sets the id to the value in the journal.  It returns an error if the block
+// exists.
 func (j *InmemJournal) Set(id, val []byte) error {
 	j.mu.RLock()
 	if _, ok := j.m[string(id)]; ok {
@@ -44,8 +46,8 @@ func (j *InmemJournal) Set(id, val []byte) error {
 	return nil
 }
 
-// Remove removes the block from the journal and return true if the block was inline and
-// an error if it doesn't exist
+// Remove removes the block from the journal and return true if the block was inline
+// and an error if it doesn't exist
 func (j *InmemJournal) Remove(id []byte) ([]byte, error) {
 	is := string(id)
 
@@ -53,10 +55,6 @@ func (j *InmemJournal) Remove(id []byte) ([]byte, error) {
 	if val, ok := j.m[is]; ok {
 		delete(j.m, is)
 		j.mu.Unlock()
-
-		// if len(val) > 9 {
-		// 	inline = true
-		// }
 
 		return val, nil
 	}

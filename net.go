@@ -18,7 +18,6 @@ import (
 // with re-usable connections to simplify all of net
 
 const (
-	//reqTypeNew byte = iota + 3
 	reqTypeGet byte = iota + 3
 	reqTypeSet
 	reqTypeRemove
@@ -190,10 +189,11 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 	defer trans.inbound.release(conn)
 
 	caddr := conn.RemoteAddr().String()
+
 	// Request handler loop
 	for {
 		// Get request
-		op, id, err := conn.readRequest(trans.blockHashSize)
+		req, err := conn.readRequest(trans.blockHashSize)
 		if err != nil {
 			if err != io.EOF {
 				log.Println("[ERROR] Reading request:", err)
@@ -201,33 +201,34 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 			return
 		}
 
-		log.Printf("[DEBUG] TCP request client=%s op=%x id=%x", caddr, op, id)
+		log.Printf("[DEBUG] TCP request client=%s method=%x id=%x", caddr, req.Type, req.Hash)
+
 		var disconnect bool
 
 		// Serve op
-		switch op {
+		switch req.Type {
 
 		case reqTypeGet:
-			disconnect, err = trans.getBlockServe(conn, id)
+			disconnect, err = trans.getBlockServe(conn, req.Hash)
 
 		case reqTypeRemove:
-			if err = trans.store.RemoveBlock(id); err == nil {
-				if err = conn.WriteHeader(Header{op, respOk}); err != nil {
+			if err = trans.store.RemoveBlock(req.Hash); err == nil {
+				if err = conn.WriteHeader(Header{req.Type, respOk}); err != nil {
 					disconnect = true
 				}
 			}
 
 		case reqTypeSet:
-			disconnect, err = trans.setBlockServe(id, conn)
+			disconnect, err = trans.setBlockServe(req.Hash, conn)
 
 		default:
-			log.Printf("[ERROR] Invalid request client=%s op=%x id=%x", caddr, op, id)
+			log.Printf("[ERROR] Invalid request client=%s op=%x id=%x", caddr, req.Type, req.Hash)
 			return
 
 		}
 
 		if err == nil {
-			log.Printf("[DEBUG] TCP response client=%s op=%x id=%x", caddr, op, id)
+			log.Printf("[DEBUG] TCP response client=%s op=%x id=%x", caddr, req.Type, req.Hash)
 			continue
 		} else if disconnect {
 			log.Printf("[ERROR] Disconnecting client=%s reason='%v'", caddr, err)
@@ -235,9 +236,9 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 		}
 
 		// Write error response
-		hdr := Header{op, respFail}
+		hdr := Header{req.Type, respFail}
 		log.Printf("[DEBUG] TCP response client=%s header=%x id=%x error='%v'",
-			caddr, hdr, id, err)
+			caddr, hdr, req.Hash, err)
 
 		if err = conn.WriteFrame(hdr, []byte(err.Error())); err != nil {
 			log.Printf("[ERROR] Failed to write error frame: %v", err)

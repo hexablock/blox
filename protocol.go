@@ -18,6 +18,12 @@ const (
 // Header is an arbitrary header for future purposes.
 type Header [headerSize]byte
 
+type request struct {
+	Type  byte
+	Flags byte
+	Hash  []byte
+}
+
 // protoConn is the connection with the protocol reader and writer. It implements the net.Conn
 // interface
 type protoConn struct {
@@ -36,10 +42,6 @@ func (conn *protoConn) WriteHeader(header Header) error {
 	}
 	return err
 }
-
-// func (conn *protoConn) WriteSize(size uint64) error {
-// 	return binary.Write(conn, binary.BigEndian, size)
-// }
 
 func (conn *protoConn) WriteFrame(header Header, data []byte) error {
 	// Check size accounting for header
@@ -80,33 +82,11 @@ func (conn *protoConn) WriteFrame(header Header, data []byte) error {
 	return err
 }
 
-// func (conn *protoConn) ReadHeader() (Header, error) {
-// 	header := Header{}
-//
-// 	// Read header
-// 	n, err := conn.Read(header[:])
-// 	if err != nil {
-// 		return header, err
-// 	}
-// 	// Check read
-// 	if n != int(headerSize) {
-// 		return header, errIncompleteRead
-// 	}
-// 	return header, nil
-// }
-
 func (conn *protoConn) ReadSize() (uint64, error) {
 	sz := make([]byte, 8)
 	if _, err := io.ReadFull(conn, sz); err != nil {
 		return 0, err
 	}
-	// n, err := conn.Read(sz)
-	// if err != nil {
-	// 	return 0, err
-	// } else if n != 8 {
-	// 	return 0, errIncompleteRead
-	// }
-
 	return binary.BigEndian.Uint64(sz), nil
 }
 
@@ -152,12 +132,13 @@ func (conn *protoConn) readResponseHeader() error {
 }
 
 // readRequest reads the op and id for the request made by a client
-func (conn *protoConn) readRequest(hashSize int) (byte, []byte, error) {
+//func (conn *protoConn) readRequest(hashSize int) (byte, []byte, error) {
+func (conn *protoConn) readRequest(hashSize int) (*request, error) {
 	raw := make([]byte, 2+hashSize)
 
 	if _, err := io.ReadFull(conn, raw); err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
-	return raw[0], raw[2:], nil
+	return &request{Type: raw[0], Flags: raw[1], Hash: raw[2:]}, nil
 }
