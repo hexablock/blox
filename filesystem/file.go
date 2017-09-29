@@ -33,35 +33,38 @@ type BloxFile struct {
 	end   time.Time
 }
 
-func (bf *BloxFile) initIO() {
+// setup io and return the effective buffer size checking it is greater than
+// equal to the number of workers
+func (bf *BloxFile) initIO(bsize int) int {
 	bf.done = make(chan error, 1)
-	if bf.numWorkers < 1 {
-		bf.numWorkers = 1
+	if bf.numWorkers <= 0 {
+		bf.numWorkers = 2
 	}
-	bf.start = time.Now()
+
+	// use numWorkers as channel buffer size if the provided size is less than
+	// the number of workers.  This is to ensure efficiency
+	if bsize < bf.numWorkers {
+		return bf.numWorkers
+	}
+
+	return bsize
 }
 
 // initialize file for writing
 func (bf *BloxFile) initWriter(bufSize int) {
-	bf.w = utils.NewShardWriter(bf.idx.BlockSize(), bufSize)
-	bf.initIO()
-	// bf.done = make(chan error, 1)
-	// bf.start = time.Now()
+	bsz := bf.initIO(bufSize)
+	bf.w = utils.NewShardWriter(bf.idx.BlockSize(), bsz)
 
-	// if bf.numWorkers < 1 {
-	// 	bf.numWorkers = 1
-	// }
-	//go bf.writeBlocks()
-	go bf.startWorkers()
+	bf.start = time.Now()
+	go bf.startWriters()
 }
 
 // initialize file for reading
 func (bf *BloxFile) initReader(bufSize int) {
-	bf.rblk = make(chan block.Block, bufSize)
-	bf.initIO()
-	// bf.done = make(chan error, 1)
-	// bf.start = time.Now()
+	bsz := bf.initIO(bufSize)
+	bf.rblk = make(chan block.Block, bsz)
 
+	bf.start = time.Now()
 	go bf.fetchBlocks()
 }
 
@@ -186,11 +189,10 @@ func (bf *BloxFile) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func (bf *BloxFile) startWorkers() {
-	// if bf.numWorkers < 2 {
-	// 	go bf.writeBlocks()
-	// 	return
-	// }
+// startWriters start the specified number of block writers each in a its own go-routine
+// and waits for completion. An error will result in the termination of call go routines
+func (bf *BloxFile) startWriters() {
+	log.Printf("[DEBUG] Starting BloxFile workers=%d", bf.numWorkers)
 
 	var wg sync.WaitGroup
 	wg.Add(bf.numWorkers)
@@ -220,7 +222,10 @@ func (bf *BloxFile) startWorkers() {
 	select {
 	case <-wait:
 	case err = <-done:
+		// CLose the remainder go-routines
 		bf.w.Close()
+		// Wait for remainder to exit.
+		log.Printf("[DEBUG] Waiting for go-routines to bail...")
 		<-wait
 	}
 
@@ -237,8 +242,6 @@ func (bf *BloxFile) writeBlocks() error {
 		blk, err := bf.newBlockFromShard(shard)
 		if err != nil {
 			//log.Printf("[ERROR] Failed to create block index=%d offset=%d error='%v'", shard.Index, shard.Offset, err)
-			//bf.done <- err
-			//return
 			return err
 		}
 
@@ -255,12 +258,9 @@ func (bf *BloxFile) writeBlocks() error {
 
 		//log.Printf("[ERROR] Failed to persist block id=%x index=%d offset=%d error='%v'",
 		//	blk.ID(), shard.Index, shard.Offset, err)
-		//bf.done <- err
-		//return
 		return err
 	}
 
-	//bf.done <- nil
 	return nil
 }
 

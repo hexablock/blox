@@ -73,14 +73,6 @@ func (wr *ShardWriter) Write(p []byte) (n int, err error) {
 
 	if nsz > wr.bs {
 		rem := wr.bs - uint64(wr.c)
-		// xs size
-		//xs := nsz - wr.bs
-		//xssz := l - int(xs)
-		//log.Println(">>", nsz, xs, xssz)
-		// write regular
-		// n, err = wr.buf.Write(p[:(l - xssz)])
-		// wr.c += n
-		//n, err = wr.write(p[:(l - xssz)])
 		n, err = wr.write(p[:rem])
 		//log.Printf("> buff=%d input=%d bs=%d n=%d error='%v'", wr.c, len(p), wr.bs, n, err)
 		if err != nil {
@@ -92,25 +84,15 @@ func (wr *ShardWriter) Write(p []byte) (n int, err error) {
 
 		// Write excess
 		var c int
-		// c, err = wr.buf.Write(p[xssz:])
-		// n += c
-		// wr.c += c
-		//c, err = wr.write(p[xssz:])
 		c, err = wr.write(p[rem:])
 		n += c
 		//log.Printf("> xs buff=%d input=%d bs=%d n=%d error='%v'", wr.c, len(p), wr.bs, n, err)
 
 	} else if nsz < wr.bs {
-
-		//n, err = wr.buf.Write(p)
-		//wr.c += n
 		//log.Printf("< buff=%d input=%d bs=%d written=%d error='%v'", wr.c, len(p), wr.bs, n, err)
 		n, err = wr.write(p)
 
 	} else {
-
-		// n, err = wr.buf.Write(p)
-		// wr.c += n
 		n, err = wr.write(p)
 		//log.Printf("= buff=%d input=%d bs=%d written=%d error='%v'", wr.c, len(p), wr.bs, n, err)
 
@@ -128,6 +110,8 @@ func (wr *ShardWriter) Write(p []byte) (n int, err error) {
 func (wr *ShardWriter) genblock() {
 	buf := wr.buf.Bytes()
 	bufLen := len(buf)
+
+	// Don't generate block if there is no data
 	if bufLen == 0 {
 		return
 	}
