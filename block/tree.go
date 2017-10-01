@@ -26,10 +26,12 @@ type TreeBlock struct {
 
 // NewTreeBlock inits a new TreeBlock with the uri and hasher. The uri may be nil.
 func NewTreeBlock(uri *URI, hasher hexatype.Hasher) *TreeBlock {
-	return &TreeBlock{
+	tb := &TreeBlock{
 		nodes:     make(map[string]*TreeNode),
 		baseBlock: &baseBlock{uri: uri, typ: BlockTypeTree, hasher: hasher},
 	}
+	tb.Hash()
+	return tb
 }
 
 func (block *TreeBlock) MarshalJSON() ([]byte, error) {
@@ -52,6 +54,13 @@ func (block *TreeBlock) MarshalJSON() ([]byte, error) {
 	block.mu.RUnlock()
 
 	return json.Marshal(t)
+}
+
+func (block *TreeBlock) GetNodeByName(name string) (*TreeNode, bool) {
+	block.mu.RLock()
+	defer block.mu.RUnlock()
+	val, ok := block.nodes[name]
+	return val, ok
 }
 
 // NodeCount returns the total number of child nodes to the TreeBlock
