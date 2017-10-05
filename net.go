@@ -33,8 +33,8 @@ var (
 	errTransportShutdown = errors.New("transport shutdown")
 )
 
-// BlockDevice implements a block storage interface.  It abstracts the index, tree and data
-// block operations.
+// BlockDevice implements a local block storage interface.  It abstracts the
+// index, tree and data block operations.
 type BlockDevice interface {
 	SetBlock(block.Block) ([]byte, error)
 	GetBlock(id []byte) (block.Block, error)
