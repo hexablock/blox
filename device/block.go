@@ -28,6 +28,8 @@ type RawDevice interface {
 	RemoveBlock(id []byte) error
 	// Check if a block by the id exists
 	Exists(id []byte) bool
+	// Count returns the total number of block on the device
+	Count() int
 	// Closes the device
 	Close() error
 }
@@ -42,6 +44,18 @@ type Journal interface {
 	Set(jent *JournalEntry) error
 	Remove(id []byte) (*JournalEntry, error)
 	Close() error
+	// Stats returns statistics
+	Stats() *Stats
+}
+
+// Stats contains information regarding blocks for a given device
+type Stats struct {
+	DataBlocks   int
+	IndexBlocks  int
+	TreeBlocks   int
+	MetaBlocks   int
+	TotalBlocks  int
+	BlocksOnDisk int
 }
 
 // BlockDevice holds and stores the actual blocks.  It contians an underlying block device
@@ -207,6 +221,14 @@ func (dev *BlockDevice) RemoveBlock(id []byte) error {
 // Close stops all operations on the device and closes it
 func (dev *BlockDevice) Close() error {
 	return dev.dev.Close()
+}
+
+// Stats returns stats about the device
+func (dev *BlockDevice) Stats() *Stats {
+	stats := dev.j.Stats()
+	stats.BlocksOnDisk = dev.dev.Count()
+
+	return stats
 }
 
 func blockReadAll(blk block.Block) ([]byte, error) {

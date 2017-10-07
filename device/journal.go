@@ -6,6 +6,7 @@ import (
 	"github.com/hexablock/blox/block"
 )
 
+// JournalEntry represents a single entry for a block
 type JournalEntry struct {
 	id   []byte
 	typ  block.BlockType
@@ -42,6 +43,30 @@ type InmemJournal struct {
 // NewInmemJournal inits a new in-memory journal.
 func NewInmemJournal() *InmemJournal {
 	return &InmemJournal{m: make(map[string]*JournalEntry)}
+}
+
+// Stats returns the journal stats
+func (j *InmemJournal) Stats() *Stats {
+	j.mu.RLock()
+	defer j.mu.RUnlock()
+
+	stat := &Stats{TotalBlocks: len(j.m)}
+
+	for _, je := range j.m {
+		typ := je.Type()
+		switch typ {
+		case block.BlockTypeData:
+			stat.DataBlocks++
+		case block.BlockTypeIndex:
+			stat.IndexBlocks++
+		case block.BlockTypeTree:
+			stat.TreeBlocks++
+		case block.BlockTypeMeta:
+			stat.MetaBlocks++
+		}
+	}
+
+	return stat
 }
 
 // Get retreives the value for the given id.  It returns a ErrNotFoundError if the

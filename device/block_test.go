@@ -3,6 +3,7 @@ package device
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/json"
 	"testing"
 
 	"github.com/hexablock/blox/block"
@@ -180,4 +181,7 @@ func TestBlockDevice(t *testing.T) {
 		t.Fatalf("node count mismatch have=%d want=%d", tb.NodeCount(), tree.NodeCount())
 	}
 
+	stat := vt.dev.Stats()
+	b, _ := json.MarshalIndent(stat, "", " ")
+	t.Logf("%s\n", b)
 }

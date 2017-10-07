@@ -3,6 +3,7 @@ package device
 import (
 	"encoding/hex"
 	"errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -122,6 +123,16 @@ func (st *FileRawDevice) SetBlock(blk block.Block) ([]byte, error) {
 	log.Printf("[DEBUG] FileRawDevice.SetBlock id=%x size=%d error='%v'", dstBlk.ID(), dstBlk.Size(), err)
 
 	return dstBlk.ID(), err
+}
+
+// Count returns the total number of blocks about the device
+func (st *FileRawDevice) Count() int {
+	list, err := ioutil.ReadDir(st.datadir)
+	if err == nil {
+		return len(list)
+	}
+
+	return 0
 }
 
 // ReleaseBlock marks a block to be released (eventually removed) from the store.
