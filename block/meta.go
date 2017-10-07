@@ -1,7 +1,6 @@
 package block
 
 import (
-	"encoding/hex"
 	"fmt"
 	"sort"
 	"strings"
@@ -14,8 +13,7 @@ import (
 // metadata
 type MetaBlock struct {
 	*baseBlock
-	blkID []byte            // ID of the actual data block
-	m     map[string]string // Metadata
+	m map[string]string // Metadata
 }
 
 func NewMetaBlock(uri *URI, hasher hexatype.Hasher) *MetaBlock {
@@ -29,11 +27,6 @@ func NewMetaBlock(uri *URI, hasher hexatype.Hasher) *MetaBlock {
 		},
 		m: make(map[string]string),
 	}
-}
-
-func (blk *MetaBlock) SetDataID(id []byte) {
-	blk.blkID = id
-	blk.Hash()
 }
 
 func (blk *MetaBlock) SetMetadata(m map[string]string) {
@@ -62,31 +55,23 @@ func (blk *MetaBlock) UnmarshalBinary(b []byte) error {
 	if l == 0 {
 		return fmt.Errorf("invalid MetaBlock data")
 	}
-	if lines[0] != "" {
-		id, err := hex.DecodeString(lines[0])
-		if err != nil {
-			return err
-		}
-		blk.id = id
-	}
-	// No metadata
-	if l < 2 {
-		return nil
-	}
-	for _, line := range lines[1:] {
+
+	for _, line := range lines {
 		kvp := strings.Split(line, "=")
 		if len(kvp) != 2 {
 			return fmt.Errorf("invalid metadata: '%s'", line)
 		}
 		blk.m[kvp[0]] = kvp[1]
 	}
+
+	blk.Hash()
+
 	return nil
 }
 
 func (blk *MetaBlock) MarshalBinary() []byte {
 	keys := blk.sortedKeys()
 	lines := make([]string, 0, len(blk.m))
-	lines = append(lines, hex.EncodeToString(blk.id))
 	for _, k := range keys {
 		lines = append(lines, fmt.Sprintf("%s=%s", k, blk.m[k]))
 	}

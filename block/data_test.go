@@ -7,9 +7,8 @@ import (
 	"github.com/hexablock/hexatype"
 )
 
-func TestFileDataBlock(t *testing.T) {
+func Test_FileDataBlock(t *testing.T) {
 	ap, _ := filepath.Abs(testFile)
-	//uri, _ := url.Parse("file://" + ap)
 	uri := NewURI("file://" + ap)
 	h := &hexatype.SHA256Hasher{}
 	blk := NewFileDataBlock(uri, h)

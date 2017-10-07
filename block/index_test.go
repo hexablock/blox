@@ -22,7 +22,7 @@ func newMemDataBlock(p []byte) (*MemDataBlock, error) {
 	return mem, err
 }
 
-func TestIndexBlock(t *testing.T) {
+func Test_IndexBlock(t *testing.T) {
 	testdata1 := []byte("1234509876543223456")
 	testdata2 := []byte("plokijuhygqakvoekfk")
 	testdata3 := []byte("1234509876549823456")
@@ -142,7 +142,7 @@ func TestIndexBlock(t *testing.T) {
 	}
 }
 
-func TestIndexBlock_smallfile(t *testing.T) {
+func Test_IndexBlock_smallfile(t *testing.T) {
 	i1 := NewIndexBlock(nil, &hexatype.SHA256Hasher{})
 	i1.SetBlockSize(1024)
 	i1.SetFileSize(12)

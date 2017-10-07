@@ -9,7 +9,7 @@ import (
 	"github.com/hexablock/hexatype"
 )
 
-func TestTreeNode(t *testing.T) {
+func Test_TreeNode(t *testing.T) {
 	tn := NewDirTreeNode("test", []byte("foo"))
 	bn := tn.MarshalBinary()
 
@@ -29,7 +29,7 @@ func TestTreeNode(t *testing.T) {
 	}
 }
 
-func TestTreeBlock(t *testing.T) {
+func Test_TreeBlock(t *testing.T) {
 	tt := []*TreeNode{
 		{Name: "test1", Address: []byte("foo"), Mode: os.ModePerm | os.ModeDir, Type: BlockTypeData},
 		{Name: "test2", Address: []byte("foo"), Mode: os.ModePerm | os.ModeDir, Type: BlockTypeData},

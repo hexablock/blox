@@ -43,11 +43,6 @@ func Test_MetaBlock(t *testing.T) {
 		}
 	}
 
-	mb.SetDataID(make([]byte, hasher.Size()))
-	mb1.SetDataID(make([]byte, hasher.Size()))
-	if bytes.Compare(mb.ID(), mb1.ID()) != 0 {
-		t.Fatal("id mismatch")
-	}
 }
 
 // NullBlock is used calculate the hash of a stream of bytes via reading or writing to the
