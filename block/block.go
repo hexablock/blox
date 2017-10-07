@@ -23,6 +23,9 @@ const (
 	BlockTypeIndex
 	// BlockTypeTree defines an tree block containing other data, index, or tree entries
 	BlockTypeTree
+	// BlockTypeMeta defines a metadata block containing the id of the a tree, index or
+	// data block and key-value metadata
+	BlockTypeMeta
 )
 
 func (blockType BlockType) String() (str string) {
@@ -33,6 +36,8 @@ func (blockType BlockType) String() (str string) {
 		str = "index"
 	case BlockTypeTree:
 		str = "tree"
+	case BlockTypeMeta:
+		str = "meta"
 	default:
 		str = "0x" + hex.EncodeToString([]byte{byte(blockType)})
 	}
