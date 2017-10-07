@@ -7,6 +7,11 @@ import (
 	"github.com/hexablock/hexatype"
 )
 
+const (
+	// DefaultBlockSize is 1MB
+	DefaultBlockSize uint64 = 1024 * 1024
+)
+
 // BlockType holds the type of block
 type BlockType byte
 
@@ -18,11 +23,6 @@ const (
 	BlockTypeIndex
 	// BlockTypeTree defines an tree block containing other data, index, or tree entries
 	BlockTypeTree
-)
-
-const (
-	// DefaultBlockSize is 1MB
-	DefaultBlockSize uint64 = 1024 * 1024
 )
 
 func (blockType BlockType) String() (str string) {
