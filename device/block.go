@@ -28,6 +28,8 @@ type RawDevice interface {
 	RemoveBlock(id []byte) error
 	// Check if a block by the id exists
 	Exists(id []byte) bool
+	// IterIDs
+	IterIDs(f func(id []byte) error) error
 	// Count returns the total number of block on the device
 	Count() int
 	// Closes the device
@@ -78,6 +80,40 @@ func NewBlockDevice(journal Journal, dev RawDevice) *BlockDevice {
 		dev:    dev,
 		hasher: dev.Hasher(),
 	}
+}
+
+// Open opens the new block device for operations.  It performs an index check
+// before returning.
+func (dev *BlockDevice) Open() error {
+	dev.checkIndex()
+	return nil
+}
+
+// checkIndex checks the index to make sure it contains blocks that are in the
+// in the underlying RawDevice
+func (dev *BlockDevice) checkIndex() {
+	var i int
+	dev.dev.IterIDs(func(id []byte) error {
+		if !dev.j.Exists(id) {
+
+			blk, err := dev.dev.GetBlock(id)
+			if err == nil {
+				jent := &JournalEntry{id: blk.ID(), size: blk.Size(), typ: blk.Type()}
+				err = dev.j.Set(jent)
+			}
+
+			if err != nil {
+				log.Println("[ERROR] Failed sync block index:", err)
+			} else {
+				i++
+			}
+
+		}
+
+		return nil
+	})
+
+	log.Printf("[INFO] BlockDevice index synced blocks=%d", i)
 }
 
 // Hasher returns the underlying hasher used for hash id generation

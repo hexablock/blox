@@ -149,47 +149,47 @@ func (st *FileRawDevice) Count() int {
 // }
 
 // IterIDs iterates over all block ids
-// func (st *FileRawDevice) IterIDs(f func(id []byte) error) error {
-// 	// Traverse in-mem blocks
-// 	i := 0
-// 	st.mu.RLock()
-// 	inMem := make([][]byte, len(st.buf))
-// 	for k := range st.buf {
-// 		inMem[i] = []byte(k)
-// 		i++
-// 	}
-// 	st.mu.RUnlock()
-//
-// 	for _, v := range inMem {
-// 		if err := f(v); err != nil {
-// 			return err
-// 		}
-// 	}
-//
-// 	// Traverse all block files
-// 	files, err := ioutil.ReadDir(st.datadir)
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	for _, fl := range files {
-// 		if fl.IsDir() {
-// 			continue
-// 		}
-//
-// 		id, er := hex.DecodeString(fl.Name())
-// 		if er != nil {
-// 			continue
-// 		}
-//
-// 		if er := f(id); er != nil {
-// 			err = er
-// 			break
-// 		}
-// 	}
-//
-// 	return err
-// }
+func (st *FileRawDevice) IterIDs(f func(id []byte) error) error {
+	// Traverse in-mem blocks
+	//var i int
+	// st.mu.RLock()
+	// inMem := make([][]byte, len(st.buf))
+	// for k := range st.buf {
+	// 	inMem[i] = []byte(k)
+	// 	i++
+	// }
+	// st.mu.RUnlock()
+	//
+	// for _, v := range inMem {
+	// 	if err := f(v); err != nil {
+	// 		return err
+	// 	}
+	// }
+
+	// Traverse all block files
+	files, err := ioutil.ReadDir(st.datadir)
+	if err != nil {
+		return err
+	}
+
+	for _, fl := range files {
+		if fl.IsDir() {
+			continue
+		}
+
+		id, er := hex.DecodeString(fl.Name())
+		if er != nil {
+			continue
+		}
+
+		if er := f(id); er != nil {
+			err = er
+			break
+		}
+	}
+
+	return err
+}
 
 // Iter iterates over blocks in theh store.  If an error is returned by the callback
 // iteration is immediately terminated returning the error.

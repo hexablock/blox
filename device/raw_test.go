@@ -59,6 +59,7 @@ func newDevTester() (*devTester, error) {
 	if err == nil {
 		vt.raw = rdev
 		vt.dev = NewBlockDevice(NewInmemJournal(), rdev)
+		err = vt.dev.Open()
 	}
 
 	return vt, err
