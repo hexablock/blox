@@ -7,4 +7,5 @@ install:
   - make deps
 
 script:
+  - dd if=/dev/zero of=./test-data/large.iso bs=64k count=10000
   - make test
