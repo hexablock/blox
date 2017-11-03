@@ -2,7 +2,9 @@ package filesystem
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
+	"hash"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,7 +12,6 @@ import (
 
 	"github.com/hexablock/blox/block"
 	"github.com/hexablock/blox/device"
-	"github.com/hexablock/hexatype"
 )
 
 var (
@@ -41,7 +42,7 @@ type fsTester struct {
 	raw    *device.FileRawDevice
 	dev    *device.BlockDevice
 	fs     *BloxFS
-	hasher hexatype.Hasher
+	hasher func() hash.Hash
 }
 
 func (vt *fsTester) cleanup() error {
@@ -52,7 +53,7 @@ func newFSTester() (*fsTester, error) {
 	df, _ := ioutil.TempDir(testdir, "data")
 	vt := &fsTester{
 		df:     df,
-		hasher: &hexatype.SHA256Hasher{},
+		hasher: sha256.New,
 	}
 	rdev, err := device.NewFileRawDevice(df, vt.hasher)
 	if err == nil {

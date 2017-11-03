@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
 	"time"
 
 	"github.com/hexablock/blox/block"
 	"github.com/hexablock/blox/utils"
-	"github.com/hexablock/hexatype"
 	"github.com/hexablock/log"
 )
 
@@ -38,12 +38,12 @@ type NetClientOptions struct {
 	Timeout      time.Duration
 	MaxIdle      time.Duration
 	ReapInterval time.Duration
-	Hasher       hexatype.Hasher
+	Hasher       func() hash.Hash
 }
 
 // DefaultNetClientOptions returns a set of sane defaults.  It takes the hash size
 // as input
-func DefaultNetClientOptions(hasher hexatype.Hasher) NetClientOptions {
+func DefaultNetClientOptions(hasher func() hash.Hash) NetClientOptions {
 	return NetClientOptions{
 		Timeout:      3 * time.Second,
 		MaxIdle:      3 * time.Minute,
@@ -54,9 +54,13 @@ func DefaultNetClientOptions(hasher hexatype.Hasher) NetClientOptions {
 
 // NetClient is a network client to perform block operations remotely
 type NetClient struct {
-	hasher        hexatype.Hasher
+	// Hash function to use
+	hasher func() hash.Hash
+
+	// hash size calculated internally
 	blockHashSize int
-	// Connection reap interval
+
+	// Outbound connection pool
 	reapInterval time.Duration
 	pool         *outPool
 }
@@ -69,7 +73,7 @@ func NewNetClient(opt NetClientOptions) *NetClient {
 		pool:          pool,
 		reapInterval:  opt.ReapInterval,
 		hasher:        opt.Hasher,
-		blockHashSize: opt.Hasher.New().Size(),
+		blockHashSize: opt.Hasher().Size(),
 	}
 	go client.reap()
 	return client

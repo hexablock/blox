@@ -1,6 +1,9 @@
 package blox
 
 import (
+	"fmt"
+	"net"
+
 	"github.com/hexablock/blox/block"
 )
 
@@ -11,6 +14,7 @@ type Transport interface {
 	SetBlock(host string, blk block.Block) ([]byte, error)
 	RemoveBlock(host string, id []byte) error
 	Register(store BlockDevice)
+	Start(ln *net.TCPListener) error
 	Shutdown() error
 }
 
@@ -58,12 +62,22 @@ func (trans *LocalTransport) RemoveBlock(host string, id []byte) error {
 	return trans.remote.RemoveBlock(host, id)
 }
 
+// Register registers the store locally as well as with the network transport
 func (trans *LocalTransport) Register(local BlockDevice) {
 	trans.local = local
-	// Register store with remote transport to start the transport
+
 	trans.remote.Register(local)
 }
 
+// Start starts the the remote transport
+func (trans *LocalTransport) Start(ln *net.TCPListener) error {
+	if trans.host == "" {
+		return fmt.Errorf("transport host not set")
+	}
+	return trans.remote.Start(ln)
+}
+
+// Shutdown shuts the remote network transport down
 func (trans *LocalTransport) Shutdown() error {
 	return trans.remote.Shutdown()
 }

@@ -46,10 +46,13 @@ type BlockDevice interface {
 type NetTransport struct {
 	// Client transport
 	*NetClient
-	// Listener
-	ln net.Listener
+
+	// TCP Listener
+	ln *net.TCPListener
+
 	// Incoming connections
 	inbound *inPool
+
 	// Underlying local storage
 	store BlockDevice
 
@@ -57,9 +60,8 @@ type NetTransport struct {
 }
 
 // NewNetTransport initializes a new network transport for the store
-func NewNetTransport(ln net.Listener, opts NetClientOptions) *NetTransport {
+func NewNetTransport(opts NetClientOptions) *NetTransport {
 	trans := &NetTransport{
-		ln:        ln,
 		inbound:   newInPool(),
 		NetClient: NewNetClient(opts),
 	}
@@ -67,10 +69,26 @@ func NewNetTransport(ln net.Listener, opts NetClientOptions) *NetTransport {
 	return trans
 }
 
-// Register registers the store with the transport
+// Register registers a BlockDevice with the transport.   This must be called
+// before a call to Start is made
 func (trans *NetTransport) Register(store BlockDevice) {
 	trans.store = store
+
+}
+
+// Start checks for a block device registration and starts a server to service
+// incoming requests. Register must be called before starting the transport.
+// Register and Start are not thread safe
+func (trans *NetTransport) Start(ln *net.TCPListener) error {
+	if trans.store == nil {
+		return fmt.Errorf("block device not registered")
+	}
+
+	trans.ln = ln
+
 	go trans.listen()
+
+	return nil
 }
 
 func (trans *NetTransport) listen() {

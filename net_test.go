@@ -45,7 +45,7 @@ func TestNetTransport(t *testing.T) {
 		t.Fatalf("size mismatch want=%d have=%d", len(testData), blk2.Size())
 	}
 
-	h := ts1.hasher.New()
+	h := ts1.hasher()
 	h.Write([]byte{byte(block.BlockTypeData)})
 	h.Write(testData)
 	s := h.Sum(nil)

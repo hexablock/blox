@@ -5,10 +5,9 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"hash"
 	"io"
 	"sync"
-
-	"github.com/hexablock/hexatype"
 )
 
 // IndexBlock is an index of data blocks. It contains an ordered list
@@ -28,7 +27,7 @@ type IndexBlock struct {
 }
 
 // NewIndexBlock instantiates a new Data index.
-func NewIndexBlock(uri *URI, hasher hexatype.Hasher) *IndexBlock {
+func NewIndexBlock(uri *URI, hasher func() hash.Hash) *IndexBlock {
 	di := &IndexBlock{
 		baseBlock: &baseBlock{hasher: hasher, uri: uri, typ: BlockTypeIndex, size: 16},
 		blockSize: DefaultBlockSize,
@@ -128,7 +127,7 @@ func (block *IndexBlock) BlockCount() int {
 // Hash computes the hash of the block given the hash function updating the indertal id
 // and returns the hash id.
 func (block *IndexBlock) Hash() []byte {
-	h := block.hasher.New()
+	h := block.hasher()
 	h.Write(block.MarshalBinary())
 	sh := h.Sum(nil)
 
@@ -238,7 +237,7 @@ func (block *IndexBlock) Read(p []byte) (int, error) {
 // Writer inits a new WriterCloser backed by hasher.  It writes the type and returns
 // the WriteCloser
 func (block *IndexBlock) Writer() (io.WriteCloser, error) {
-	block.hw = NewHasherWriter(block.hasher.New(), bytes.NewBuffer(nil))
+	block.hw = NewHasherWriter(block.hasher(), bytes.NewBuffer(nil))
 	err := WriteBlockType(block.hw, block.typ)
 	return block, err
 }

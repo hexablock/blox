@@ -3,13 +3,13 @@ package device
 import (
 	"encoding/hex"
 	"errors"
+	"hash"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/hexablock/blox/block"
 	"github.com/hexablock/blox/utils"
-	"github.com/hexablock/hexatype"
 	"github.com/hexablock/log"
 )
 
@@ -21,12 +21,12 @@ const DefaultFilePerms = 0444
 type FileRawDevice struct {
 	datadir        string
 	defaultSetPerm os.FileMode
-	hasher         hexatype.Hasher
+	hasher         func() hash.Hash
 }
 
 // NewFileRawDevice instantiates a new FileRawDevice setting the defaults permissions, flush interval
 // provided data directory.
-func NewFileRawDevice(datadir string, hasher hexatype.Hasher) (*FileRawDevice, error) {
+func NewFileRawDevice(datadir string, hasher func() hash.Hash) (*FileRawDevice, error) {
 	dabs, err := filepath.Abs(datadir)
 	if err == nil {
 
@@ -44,7 +44,7 @@ func NewFileRawDevice(datadir string, hasher hexatype.Hasher) (*FileRawDevice, e
 }
 
 // Hasher returns the underlying hash function generator used to generate hash id
-func (st *FileRawDevice) Hasher() hexatype.Hasher {
+func (st *FileRawDevice) Hasher() func() hash.Hash {
 	return st.hasher
 }
 

@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"hash"
 	"io"
 	"os"
 	"sort"
 	"sync"
-
-	"github.com/hexablock/hexatype"
 )
 
 // TreeBlock is a block containing other types of blocks as it's children
@@ -25,7 +24,7 @@ type TreeBlock struct {
 }
 
 // NewTreeBlock inits a new TreeBlock with the uri and hasher. The uri may be nil.
-func NewTreeBlock(uri *URI, hasher hexatype.Hasher) *TreeBlock {
+func NewTreeBlock(uri *URI, hasher func() hash.Hash) *TreeBlock {
 	tb := &TreeBlock{
 		nodes:     make(map[string]*TreeNode),
 		baseBlock: &baseBlock{uri: uri, typ: BlockTypeTree, hasher: hasher},
@@ -100,7 +99,7 @@ func (block *TreeBlock) AddNodes(nodes ...*TreeNode) {
 	}
 
 	b := block.MarshalBinary()
-	h := block.hasher.New()
+	h := block.hasher()
 	h.Write(b)
 	sh := h.Sum(nil)
 	// Update the block id based on the latest hash calculation
@@ -166,7 +165,7 @@ func (block *TreeBlock) Read(b []byte) (int, error) {
 // Writer returns a new writer to allow writing raw bytes to the the TreeBlock.  Data is
 // actually written to the structure once the writer is closed.
 func (block *TreeBlock) Writer() (io.WriteCloser, error) {
-	block.hw = NewHasherWriter(block.hasher.New(), bytes.NewBuffer(nil))
+	block.hw = NewHasherWriter(block.hasher(), bytes.NewBuffer(nil))
 	err := WriteBlockType(block.hw, block.typ)
 	return block, err
 }
@@ -177,7 +176,7 @@ func (block *TreeBlock) Write(p []byte) (int, error) {
 
 // Hash returns the hash id of the block given the hash function
 func (block *TreeBlock) Hash() []byte {
-	h := block.hasher.New()
+	h := block.hasher()
 	h.Write(block.MarshalBinary())
 	sh := h.Sum(nil)
 	// Update the block id based on the latest hash calculation

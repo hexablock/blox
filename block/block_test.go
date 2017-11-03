@@ -2,18 +2,17 @@ package block
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
-
-	"github.com/hexablock/hexatype"
 )
 
 var testFile = "../test-data/Crypto101.pdf"
 
 func hashFile(fp string) ([]byte, error) {
-	fsh := (&hexatype.SHA256Hasher{}).New()
+	fsh := sha256.New()
 	fh, err := os.Open(testFile)
 	if err != nil {
 		return nil, err
@@ -28,7 +27,7 @@ func hashFile(fp string) ([]byte, error) {
 }
 
 func hashFileWithType(fp string, typ BlockType) ([]byte, error) {
-	fsh := (&hexatype.SHA256Hasher{}).New()
+	fsh := sha256.New()
 	fsh.Write([]byte{byte(typ)})
 	fh, err := os.Open(testFile)
 	if err != nil {
@@ -45,7 +44,7 @@ func hashFileWithType(fp string, typ BlockType) ([]byte, error) {
 
 func TestHashReader(t *testing.T) {
 	fh, _ := os.Open(testFile)
-	hr := NewHasherReader((&hexatype.SHA256Hasher{}).New(), fh)
+	hr := NewHasherReader(sha256.New(), fh)
 
 	_, err := ioutil.ReadAll(hr)
 	if err != nil {

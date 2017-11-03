@@ -2,10 +2,9 @@ package block
 
 import (
 	"encoding/hex"
+	"hash"
 	"io"
 	"sync/atomic"
-
-	"github.com/hexablock/hexatype"
 )
 
 const (
@@ -22,13 +21,13 @@ type StreamedBlock struct {
 	// underlying reader-writer
 	fh io.ReadWriteCloser
 	// Read hasher
-	hasher hexatype.Hasher
+	hasher func() hash.Hash
 }
 
 // NewStreamedBlock initializes a block with a read/writer.  It hashes both on reads as well
 // as writes.  It takes a BlockType, hash function for read operations, network connection as
 // the reader/writer and the size of the block as parameters.
-func NewStreamedBlock(typ BlockType, uri *URI, hasher hexatype.Hasher, fh io.ReadWriteCloser, size uint64) *StreamedBlock {
+func NewStreamedBlock(typ BlockType, uri *URI, hasher func() hash.Hash, fh io.ReadWriteCloser, size uint64) *StreamedBlock {
 	nb := &StreamedBlock{
 		baseBlock: &baseBlock{
 			size: size,
@@ -56,7 +55,7 @@ func (block *StreamedBlock) Reader() (io.ReadCloser, error) {
 		return nil, errReaderWriterOpen
 	}
 	// We do not burn the type as it is not expected to be in the underlying stream
-	block.hr = NewHasherReader(block.hasher.New(), block.fh)
+	block.hr = NewHasherReader(block.hasher(), block.fh)
 	//_, err := block.hr.hasher.Write([]byte{byte(block.typ)})
 
 	return block, nil
@@ -69,7 +68,7 @@ func (block *StreamedBlock) Writer() (io.WriteCloser, error) {
 		return nil, errReaderWriterOpen
 	}
 
-	block.hw = NewHasherWriter(block.hasher.New(), block.fh)
+	block.hw = NewHasherWriter(block.hasher(), block.fh)
 	// Write BlockType
 	err := WriteBlockType(block.hw, block.typ)
 	return block, err

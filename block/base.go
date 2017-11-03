@@ -1,6 +1,6 @@
 package block
 
-import "github.com/hexablock/hexatype"
+import "hash"
 
 type baseBlock struct {
 	// Hash id of the block
@@ -12,10 +12,13 @@ type baseBlock struct {
 	// This holds a file location, network address or any other uri where
 	// the data can actually be accessed.
 	uri *URI
+
 	// Hash function to use
-	hasher hexatype.Hasher
+	hasher func() hash.Hash
+
 	// Write and hash
 	hw *HasherWriter
+
 	// Read and hash
 	hr *HasherReader
 }

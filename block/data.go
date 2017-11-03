@@ -2,13 +2,12 @@ package block
 
 import (
 	"bytes"
+	"hash"
 	"io"
-
-	"github.com/hexablock/hexatype"
 )
 
 // NewDataBlock inits a new DataBlock based on the given scheme
-func NewDataBlock(uri *URI, hasher hexatype.Hasher) Block {
+func NewDataBlock(uri *URI, hasher func() hash.Hash) Block {
 	if uri != nil {
 		switch uri.Scheme {
 		case SchemeFile:
@@ -20,21 +19,22 @@ func NewDataBlock(uri *URI, hasher hexatype.Hasher) Block {
 	return NewMemDataBlock(uri, hasher)
 }
 
+// MemDataBlock is an in-memory raw data block
 type MemDataBlock struct {
 	*baseBlock
 	data []byte
 	rb   *bytes.Buffer
 }
 
-// NewDataBlock inits a new DataBlock
-func NewMemDataBlock(uri *URI, hasher hexatype.Hasher) *MemDataBlock {
+// NewMemDataBlock inits a new DataBlock
+func NewMemDataBlock(uri *URI, hasher func() hash.Hash) *MemDataBlock {
 	return &MemDataBlock{
 		baseBlock: &baseBlock{uri: uri, typ: BlockTypeData, hasher: hasher}}
 }
 
 // Writer initializes a write buffer returning a WriteCloser
 func (block *MemDataBlock) Writer() (io.WriteCloser, error) {
-	block.hw = NewHasherWriter(block.hasher.New(), bytes.NewBuffer(nil))
+	block.hw = NewHasherWriter(block.hasher(), bytes.NewBuffer(nil))
 	// Write type to hasher. we do not actually write/persist it
 	_, err := block.hw.hasher.Write([]byte{byte(block.typ)})
 	return block, err
@@ -73,7 +73,7 @@ func (block *MemDataBlock) Close() error {
 
 // Hash returns the hash id of the block given the hash function
 func (block *MemDataBlock) Hash() []byte {
-	h := block.hasher.New()
+	h := block.hasher()
 	h.Write([]byte{byte(block.typ)})
 
 	rd, _ := block.Reader()

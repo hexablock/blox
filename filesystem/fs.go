@@ -1,10 +1,10 @@
 package filesystem
 
 import (
+	"hash"
 	"os"
 
 	"github.com/hexablock/blox/block"
-	"github.com/hexablock/hexatype"
 )
 
 const defaulBlockBufSize = 8
@@ -12,7 +12,7 @@ const defaulBlockBufSize = 8
 // BlockDevice implements an interface to abstract underlying device ops.  The filesystem makes
 // requests to the device to layout the filesystem
 type BlockDevice interface {
-	Hasher() hexatype.Hasher
+	Hasher() func() hash.Hash
 	SetBlock(block.Block) ([]byte, error)
 	GetBlock(id []byte) (block.Block, error)
 	RemoveBlock(id []byte) error
@@ -23,7 +23,7 @@ type BlockDevice interface {
 // interface only supports interactions using the hash id.
 type BloxFS struct {
 	dev    BlockDevice
-	hasher hexatype.Hasher
+	hasher func() hash.Hash
 }
 
 // NewBloxFS inits a new Blox file-system
@@ -37,7 +37,7 @@ func (fs *BloxFS) Name() string {
 }
 
 // Hasher returns the underlying hash function used
-func (fs *BloxFS) Hasher() hexatype.Hasher {
+func (fs *BloxFS) Hasher() func() hash.Hash {
 	return fs.hasher
 }
 
@@ -54,9 +54,9 @@ func (fs *BloxFS) Create() (*BloxFile, error) {
 	return bf, nil
 }
 
-// Open opens the hash id for reading. If successful, methods on the returned file can be
-// used for reading.  It initializes the file based on the block type associated to id.
-// It returns en error if the block type is invalid
+// Open opens the hash id for reading. If successful, methods on the returned
+// file can be used for reading.  It initializes the file based on the block
+// type associated to id.  It returns en error if the block type is invalid
 func (fs *BloxFS) Open(sh []byte) (*BloxFile, error) {
 	// Load BloxFile from the hash
 	bf, err := bloxFileFromHash(fs.dev, sh)

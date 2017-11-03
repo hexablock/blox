@@ -1,8 +1,9 @@
 package blox
 
 import (
+	"hash"
+
 	"github.com/hexablock/blox/block"
-	"github.com/hexablock/hexatype"
 )
 
 // NetDevice is a network BlockDevice. It allows to make direct block operations on a
@@ -22,7 +23,7 @@ func NewNetDevice(remote string, opts NetClientOptions) *NetDevice {
 }
 
 // Hasher returns the hash function generator for hash ids for the device
-func (dev *NetDevice) Hasher() hexatype.Hasher {
+func (dev *NetDevice) Hasher() func() hash.Hash {
 	return dev.client.hasher
 }
 

@@ -2,16 +2,16 @@ package block
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"hash"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
-
-	"github.com/hexablock/hexatype"
 )
 
 func Test_MetaBlock(t *testing.T) {
-	hasher := &hexatype.SHA256Hasher{}
+	hasher := sha256.New
 	mb := NewMetaBlock(nil, hasher)
 	m := map[string]string{
 		"foo": "bar",
@@ -53,14 +53,14 @@ type NullBlock struct {
 }
 
 // NewNullBlock instantiates a new block of type with the supplied file uri.
-func NewNullBlock(typ BlockType, uri *URI, hasher hexatype.Hasher) *NullBlock {
+func NewNullBlock(typ BlockType, uri *URI, hasher func() hash.Hash) *NullBlock {
 	return &NullBlock{baseBlock: &baseBlock{typ: typ, uri: uri, hasher: hasher}}
 }
 
 // Writer returns a WriteCloser that does nothing but hash the data being written
 func (block *NullBlock) Writer() (io.WriteCloser, error) {
 	// Hasher to hash and discard the data
-	block.hw = NewHasherWriter(block.hasher.New(), ioutil.Discard)
+	block.hw = NewHasherWriter(block.hasher(), ioutil.Discard)
 	err := WriteBlockType(block.hw, block.Type())
 	return block, err
 }
@@ -73,7 +73,7 @@ func (block *NullBlock) Reader() (io.ReadCloser, error) {
 		return nil, err
 	}
 
-	block.hr = NewHasherReader(block.hasher.New(), block.fh)
+	block.hr = NewHasherReader(block.hasher(), block.fh)
 	block.hr.hasher.Write([]byte{byte(block.Type())})
 
 	return block, nil

@@ -1,7 +1,9 @@
 package blox
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"hash"
 	"io/ioutil"
 	"net"
 	"os"
@@ -9,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/hexablock/blox/device"
-	"github.com/hexablock/hexatype"
 	"github.com/hexablock/log"
 )
 
@@ -47,14 +48,14 @@ type testServer struct {
 	d      string
 	rdev   device.RawDevice
 	dev    *device.BlockDevice
-	hasher hexatype.Hasher
+	hasher func() hash.Hash
 
 	trans *NetTransport
-	ln    net.Listener
+	ln    *net.TCPListener
 }
 
 func newTestServer() (*testServer, error) {
-	ts := &testServer{hasher: &hexatype.SHA256Hasher{}}
+	ts := &testServer{hasher: sha256.New}
 	var err error
 
 	ts.d, _ = ioutil.TempDir("./tmp", "data")
@@ -66,12 +67,17 @@ func newTestServer() (*testServer, error) {
 	ts.rdev = rdev
 	ts.dev = device.NewBlockDevice(device.NewInmemJournal(), rdev)
 
-	ts.ln, _ = net.Listen("tcp", "127.0.0.1:0")
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, err
+	}
+	ts.ln = ln.(*net.TCPListener)
 	opts := DefaultNetClientOptions(ts.hasher)
-	ts.trans = NewNetTransport(ts.ln, opts)
+	ts.trans = NewNetTransport(opts)
 	ts.trans.Register(ts.dev)
+	err = ts.trans.Start(ts.ln)
 
-	return ts, nil
+	return ts, err
 }
 
 func (ts *testServer) cleanup() {

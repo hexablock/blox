@@ -2,10 +2,9 @@ package block
 
 import (
 	"fmt"
+	"hash"
 	"sort"
 	"strings"
-
-	"github.com/hexablock/hexatype"
 )
 
 // MetaBlock is a metadata block. It contains an id that points
@@ -16,14 +15,14 @@ type MetaBlock struct {
 	m map[string]string // Metadata
 }
 
-func NewMetaBlock(uri *URI, hasher hexatype.Hasher) *MetaBlock {
+func NewMetaBlock(uri *URI, hasher func() hash.Hash) *MetaBlock {
 
 	return &MetaBlock{
 		baseBlock: &baseBlock{
 			hasher: hasher,
 			uri:    uri,
 			typ:    BlockTypeMeta,
-			size:   uint64(hasher.Size() + 1), // hash size plus the new line
+			size:   uint64(hasher().Size() + 1), // hash size plus the new line
 		},
 		m: make(map[string]string),
 	}
@@ -37,7 +36,7 @@ func (blk *MetaBlock) SetMetadata(m map[string]string) {
 }
 
 func (blk *MetaBlock) Hash() []byte {
-	h := blk.hasher.New()
+	h := blk.hasher()
 	h.Write(blk.MarshalBinary())
 	sh := h.Sum(nil)
 

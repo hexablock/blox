@@ -2,12 +2,11 @@ package block
 
 import (
 	"encoding/hex"
+	"hash"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"github.com/hexablock/hexatype"
 )
 
 // FileDataBlock is a block with a file as its store.
@@ -17,14 +16,14 @@ type FileDataBlock struct {
 }
 
 // NewFileDataBlock instantiates a new Block for the given type
-func NewFileDataBlock(uri *URI, hasher hexatype.Hasher) *FileDataBlock {
+func NewFileDataBlock(uri *URI, hasher func() hash.Hash) *FileDataBlock {
 	return &FileDataBlock{
 		baseBlock: &baseBlock{typ: BlockTypeData, uri: uri, hasher: hasher}}
 }
 
 // LoadFileDataBlock loads a FileDataBlock from a file on disk.  It does not actually
 // open the file
-func LoadFileDataBlock(uri *URI, hasher hexatype.Hasher) (*FileDataBlock, error) {
+func LoadFileDataBlock(uri *URI, hasher func() hash.Hash) (*FileDataBlock, error) {
 	id, err := hex.DecodeString(filepath.Base(uri.Path))
 	if err != nil {
 		return nil, err
@@ -79,7 +78,7 @@ func (block *FileDataBlock) Writer() (io.WriteCloser, error) {
 	block.th = fh
 	tmpfile := fh.Name()
 
-	block.hw = NewHasherWriter(block.hasher.New(), fh)
+	block.hw = NewHasherWriter(block.hasher(), fh)
 	if err = WriteBlockType(block.hw, block.typ); err != nil {
 		fh.Close()
 		os.Remove(tmpfile)

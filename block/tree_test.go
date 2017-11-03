@@ -2,11 +2,10 @@ package block
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"io"
 	"os"
 	"testing"
-
-	"github.com/hexablock/hexatype"
 )
 
 func Test_TreeNode(t *testing.T) {
@@ -37,7 +36,7 @@ func Test_TreeBlock(t *testing.T) {
 		NewDirTreeNode("test4", []byte("foo")),
 	}
 
-	hasher := &hexatype.SHA256Hasher{}
+	hasher := sha256.New
 	uri := NewURI("memory://")
 	tb := NewTreeBlock(uri, hasher)
 	tb.AddNodes(tt...)

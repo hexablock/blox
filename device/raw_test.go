@@ -2,8 +2,10 @@ package device
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
 	"io/ioutil"
 	"os"
@@ -11,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/hexablock/blox/block"
-	"github.com/hexablock/hexatype"
 )
 
 var (
@@ -41,7 +42,7 @@ type devTester struct {
 	df     string
 	raw    *FileRawDevice
 	dev    *BlockDevice
-	hasher hexatype.Hasher
+	hasher func() hash.Hash
 }
 
 func (vt *devTester) cleanup() error {
@@ -52,7 +53,7 @@ func newDevTester() (*devTester, error) {
 	df, _ := ioutil.TempDir(testdir, "data")
 	vt := &devTester{
 		df:     df,
-		hasher: &hexatype.SHA256Hasher{},
+		hasher: sha256.New,
 	}
 
 	rdev, err := NewFileRawDevice(df, vt.hasher)
@@ -70,7 +71,7 @@ func TestFileRawDevice_SetBlock(t *testing.T) {
 	df, _ := ioutil.TempDir(testdir, "data")
 	defer os.RemoveAll(df)
 
-	hasher := &hexatype.SHA256Hasher{}
+	hasher := sha256.New
 	fbs, err := NewFileRawDevice(df, hasher)
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +117,7 @@ func TestFileDataBlockStore(t *testing.T) {
 	df, _ := ioutil.TempDir(testdir, "data")
 	defer os.RemoveAll(df)
 
-	hasher := &hexatype.SHA256Hasher{}
+	hasher := sha256.New
 	fbs, err := NewFileRawDevice(df, hasher)
 	if err != nil {
 		t.Fatal(err)
@@ -137,7 +138,7 @@ func TestFileDataBlockStore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h := hasher.New()
+	h := hasher()
 	h.Write([]byte{byte(block.BlockTypeData)})
 	h.Write(testdata)
 	s := h.Sum(nil)

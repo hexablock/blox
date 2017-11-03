@@ -2,9 +2,8 @@ package block
 
 import (
 	"encoding/hex"
+	"hash"
 	"io"
-
-	"github.com/hexablock/hexatype"
 )
 
 const (
@@ -67,7 +66,7 @@ type Block interface {
 
 // New returns a new Block of the given type. It takes a uri used to determine the source
 // of the block and a hasher.  The hasher is only required for TreeBlocks
-func New(typ BlockType, uri *URI, hasher hexatype.Hasher) (blk Block, err error) {
+func New(typ BlockType, uri *URI, hasher func() hash.Hash) (blk Block, err error) {
 	switch typ {
 	case BlockTypeData:
 		blk = NewDataBlock(uri, hasher)

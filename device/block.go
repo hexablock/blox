@@ -1,11 +1,11 @@
 package device
 
 import (
+	"hash"
 	"io"
 	"io/ioutil"
 
 	"github.com/hexablock/blox/block"
-	"github.com/hexablock/hexatype"
 	"github.com/hexablock/log"
 )
 
@@ -17,21 +17,29 @@ const maxJournalDataValSize = 4 * 1024
 // contains no smarts
 type RawDevice interface {
 	// Hasher i.e. hash function for id generation
-	Hasher() hexatype.Hasher
-	// Upon close write the id
+	Hasher() func() hash.Hash
+
+	// New block.  Upon close write the id
 	NewBlock() block.Block
+
 	// Write the block by the id
 	SetBlock(block.Block) ([]byte, error)
+
 	// Get a block by id
 	GetBlock(id []byte) (block.Block, error)
+
 	// Remove a block by id
 	RemoveBlock(id []byte) error
+
 	// Check if a block by the id exists
 	Exists(id []byte) bool
+
 	// IterIDs
 	IterIDs(f func(id []byte) error) error
+
 	// Count returns the total number of block on the device
 	Count() int
+
 	// Closes the device
 	Close() error
 }
@@ -70,7 +78,7 @@ type BlockDevice struct {
 	// Actual block store for data blocks
 	dev RawDevice
 	// hasher
-	hasher hexatype.Hasher
+	hasher func() hash.Hash
 }
 
 // NewBlockDevice inits a new BlockDevice with the BlockDevice.
@@ -117,7 +125,7 @@ func (dev *BlockDevice) checkIndex() {
 }
 
 // Hasher returns the underlying hasher used for hash id generation
-func (dev *BlockDevice) Hasher() hexatype.Hasher {
+func (dev *BlockDevice) Hasher() func() hash.Hash {
 	return dev.hasher
 }
 

@@ -2,17 +2,16 @@ package block
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"testing"
-
-	"github.com/hexablock/hexatype"
 )
 
 func newMemDataBlock(p []byte) (*MemDataBlock, error) {
 	uri := NewURI("memory://")
-	mem := NewMemDataBlock(uri, &hexatype.SHA256Hasher{})
+	mem := NewMemDataBlock(uri, sha256.New)
 	wr, err := mem.Writer()
 	if err == nil {
 		defer wr.Close()
@@ -32,7 +31,7 @@ func Test_IndexBlock(t *testing.T) {
 	mem3, _ := newMemDataBlock(testdata3)
 
 	uri := NewURI("memory://")
-	idx := NewIndexBlock(uri, &hexatype.SHA256Hasher{})
+	idx := NewIndexBlock(uri, sha256.New)
 	idx.SetBlockSize(19)
 	idx.AddBlock(1, mem1)
 	idx.AddBlock(2, mem2)
@@ -95,7 +94,7 @@ func Test_IndexBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nidx := NewIndexBlock(nil, &hexatype.SHA256Hasher{})
+	nidx := NewIndexBlock(nil, sha256.New)
 	wr, err := nidx.Writer()
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +142,7 @@ func Test_IndexBlock(t *testing.T) {
 }
 
 func Test_IndexBlock_smallfile(t *testing.T) {
-	i1 := NewIndexBlock(nil, &hexatype.SHA256Hasher{})
+	i1 := NewIndexBlock(nil, sha256.New)
 	i1.SetBlockSize(1024)
 	i1.SetFileSize(12)
 
@@ -152,7 +151,7 @@ func Test_IndexBlock_smallfile(t *testing.T) {
 		t.Fatal("should have 17 bytes")
 	}
 
-	i2 := NewIndexBlock(nil, &hexatype.SHA256Hasher{})
+	i2 := NewIndexBlock(nil, sha256.New)
 	if err := i2.UnmarshalBinary(bin); err != nil {
 		t.Fatal(err)
 	}
