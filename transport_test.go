@@ -15,7 +15,7 @@ func TestLocalTransport(t *testing.T) {
 	}
 
 	host := "127.0.0.1:9999"
-	trans := NewLocalTransport(host, ts1.trans)
+	trans := NewLocalNetTranport(host, ts1.trans)
 	trans.Register(ts1.dev)
 
 	blk := block.NewDataBlock(nil, ts1.hasher)

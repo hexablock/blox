@@ -61,11 +61,24 @@ func (block *IndexBlock) BlockSize() uint64 {
 // AddBlock adds a block to the IndexBlock at the given index.
 func (block *IndexBlock) AddBlock(index uint64, blk Block) {
 	id := blk.ID()
+	size := blk.Size()
+
+	block.IndexBlock(index, id, size)
+	// block.mu.Lock()
+	// // Update the index
+	// block.blocks[index] = id
+	// block.fileSize += blk.Size()
+	// // Update the actual size of this block.
+	// block.size += uint64(len(id))
+	// block.mu.Unlock()
+}
+
+func (block *IndexBlock) IndexBlock(index uint64, id []byte, size uint64) {
 
 	block.mu.Lock()
 	// Update the index
 	block.blocks[index] = id
-	block.fileSize += blk.Size()
+	block.fileSize += size
 	// Update the actual size of this block.
 	block.size += uint64(len(id))
 	block.mu.Unlock()

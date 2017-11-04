@@ -125,7 +125,7 @@ func TestBlockDevice(t *testing.T) {
 	blk := block.NewDataBlock(nil, vt.hasher)
 	wr, _ = blk.Writer()
 
-	pl := make([]byte, maxJournalDataValSize+1)
+	pl := make([]byte, maxIndexDataValSize+1)
 	rand.Read(pl)
 	if _, err = wr.Write(pl); err != nil {
 		t.Fatal(err)

@@ -59,7 +59,7 @@ func newDevTester() (*devTester, error) {
 	rdev, err := NewFileRawDevice(df, vt.hasher)
 	if err == nil {
 		vt.raw = rdev
-		vt.dev = NewBlockDevice(NewInmemJournal(), rdev)
+		vt.dev = NewBlockDevice(NewInmemIndex(), rdev)
 		err = vt.dev.Open()
 	}
 

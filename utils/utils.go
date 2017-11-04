@@ -7,7 +7,7 @@ import (
 
 var (
 	errIncompleteWrite = errors.New("incomplete write")
-	errIncompleteRead  = errors.New("incomplete read")
+	//errIncompleteRead  = errors.New("incomplete read")
 )
 
 // CopyNAndCheck copy bytes to buffer and check all data was written

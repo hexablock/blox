@@ -18,19 +18,19 @@ type Transport interface {
 	Shutdown() error
 }
 
-// LocalTransport is an interface to interact with blocks locally and remotely.  It
-// selects between making a remote vs a local call based on the given host
-type LocalTransport struct {
+// LocalNetTranport is an interface to interact with blocks locally and remotely.
+// It selects between making a remote vs a local call based on the given host
+type LocalNetTranport struct {
 	host   string
 	local  BlockDevice
 	remote Transport
 }
 
-// NewLocalTransport creates a new instance using the provided store and transport.  It
-// registers the store with the transport.  The transport is started once the local BlockDevice
-// has been registered.
-func NewLocalTransport(host string, remote Transport) *LocalTransport {
-	lt := &LocalTransport{
+// NewLocalNetTranport creates a new instance using the provided store and transport.
+// It registers the store with the transport.  The transport is started once the
+// local BlockDevice has been registered.
+func NewLocalNetTranport(host string, remote Transport) *LocalNetTranport {
+	lt := &LocalNetTranport{
 		host:   host,
 		remote: remote,
 	}
@@ -39,7 +39,7 @@ func NewLocalTransport(host string, remote Transport) *LocalTransport {
 }
 
 // GetBlock calls GetBlock on a local or remote host
-func (trans *LocalTransport) GetBlock(host string, id []byte) (block.Block, error) {
+func (trans *LocalNetTranport) GetBlock(host string, id []byte) (block.Block, error) {
 	if trans.host == host {
 		return trans.local.GetBlock(id)
 	}
@@ -47,7 +47,7 @@ func (trans *LocalTransport) GetBlock(host string, id []byte) (block.Block, erro
 }
 
 // SetBlock calls a SetBlock on a local or remote host
-func (trans *LocalTransport) SetBlock(host string, blk block.Block) ([]byte, error) {
+func (trans *LocalNetTranport) SetBlock(host string, blk block.Block) ([]byte, error) {
 	if trans.host == host {
 		return trans.local.SetBlock(blk)
 	}
@@ -55,7 +55,7 @@ func (trans *LocalTransport) SetBlock(host string, blk block.Block) ([]byte, err
 }
 
 // RemoveBlock calls RemoveBlock on a local or remote host
-func (trans *LocalTransport) RemoveBlock(host string, id []byte) error {
+func (trans *LocalNetTranport) RemoveBlock(host string, id []byte) error {
 	if trans.host == host {
 		return trans.local.RemoveBlock(id)
 	}
@@ -63,14 +63,13 @@ func (trans *LocalTransport) RemoveBlock(host string, id []byte) error {
 }
 
 // Register registers the store locally as well as with the network transport
-func (trans *LocalTransport) Register(local BlockDevice) {
+func (trans *LocalNetTranport) Register(local BlockDevice) {
 	trans.local = local
-
 	trans.remote.Register(local)
 }
 
 // Start starts the the remote transport
-func (trans *LocalTransport) Start(ln *net.TCPListener) error {
+func (trans *LocalNetTranport) Start(ln *net.TCPListener) error {
 	if trans.host == "" {
 		return fmt.Errorf("transport host not set")
 	}
@@ -78,6 +77,6 @@ func (trans *LocalTransport) Start(ln *net.TCPListener) error {
 }
 
 // Shutdown shuts the remote network transport down
-func (trans *LocalTransport) Shutdown() error {
+func (trans *LocalNetTranport) Shutdown() error {
 	return trans.remote.Shutdown()
 }

@@ -9,9 +9,9 @@ import (
 	"github.com/hexablock/log"
 )
 
-// maxJournalDataValSize is the max allowed size of a DataBlock to be stored
+// maxIndexDataValSize is the max allowed size of a DataBlock to be stored
 // inline in the journal entry 4KB
-const maxJournalDataValSize = 4 * 1024
+const maxIndexDataValSize = 4 * 1024
 
 // RawDevice represents a block storage interface specifically for data blocks. It
 // contains no smarts
@@ -44,15 +44,16 @@ type RawDevice interface {
 	Close() error
 }
 
-// Journal implements a BlockDevice journal to hold an index containing type and size.
-// IndexBlock and TreeBlock are stored only in the journal.  DataBlock is stored in the
-// journal if the size is smaller than the allowed size.
-type Journal interface {
-	Get(id []byte) (*JournalEntry, error)
+// BlockIndex implements a BlockDevice index containing type and size.
+// IndexBlock and TreeBlock are stored in their entirity only in the index.
+// DataBlock is stored in the index if the size is smaller than
+// maxIndexDataValSize.
+type BlockIndex interface {
+	Get(id []byte) (*IndexEntry, error)
 	Exists(id []byte) bool
-	Iter(cb func(*JournalEntry) error) error
-	Set(jent *JournalEntry) error
-	Remove(id []byte) (*JournalEntry, error)
+	Iter(cb func(*IndexEntry) error) error
+	Set(jent *IndexEntry) error
+	Remove(id []byte) (*IndexEntry, error)
 	Close() error
 	// Stats returns statistics
 	Stats() *Stats
@@ -74,7 +75,7 @@ type Stats struct {
 // in the index/journal.
 type BlockDevice struct {
 	// Block journal/index for the underlying RawDevice
-	j Journal
+	j BlockIndex
 	// Actual block store for data blocks
 	dev RawDevice
 	// hasher
@@ -82,9 +83,9 @@ type BlockDevice struct {
 }
 
 // NewBlockDevice inits a new BlockDevice with the BlockDevice.
-func NewBlockDevice(journal Journal, dev RawDevice) *BlockDevice {
+func NewBlockDevice(idx BlockIndex, dev RawDevice) *BlockDevice {
 	return &BlockDevice{
-		j:      journal,
+		j:      idx,
 		dev:    dev,
 		hasher: dev.Hasher(),
 	}
@@ -93,20 +94,20 @@ func NewBlockDevice(journal Journal, dev RawDevice) *BlockDevice {
 // Open opens the new block device for operations.  It performs an index check
 // before returning.
 func (dev *BlockDevice) Open() error {
-	dev.checkIndex()
+	dev.syncRawDeviceToIndex()
 	return nil
 }
 
-// checkIndex checks the index to make sure it contains blocks that are in the
-// in the underlying RawDevice
-func (dev *BlockDevice) checkIndex() {
+// syncRawDeviceToIndex checks the index to make sure it contains blocks that
+// are on the in the underlying RawDevice
+func (dev *BlockDevice) syncRawDeviceToIndex() {
 	var i int
 	dev.dev.IterIDs(func(id []byte) error {
 		if !dev.j.Exists(id) {
 
 			blk, err := dev.dev.GetBlock(id)
 			if err == nil {
-				jent := &JournalEntry{id: blk.ID(), size: blk.Size(), typ: blk.Type()}
+				jent := &IndexEntry{id: blk.ID(), size: blk.Size(), typ: blk.Type()}
 				err = dev.j.Set(jent)
 			}
 
@@ -152,7 +153,7 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 	case block.BlockTypeData:
 		// Get the remainder of the data if there is any.  This would be an inline data block.
 		// only
-		if jent.size <= maxJournalDataValSize {
+		if jent.size <= maxIndexDataValSize {
 			// Create block from inline journal data.  It does not contain the size.
 			if wr, err = blk.Writer(); err == nil {
 				defer wr.Close()
@@ -180,7 +181,7 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
 
 	typ := blk.Type()
-	jent := &JournalEntry{id: blk.ID(), size: blk.Size(), typ: typ}
+	jent := &IndexEntry{id: blk.ID(), size: blk.Size(), typ: typ}
 	if jent.id == nil || len(jent.id) == 0 {
 		return nil, block.ErrInvalidBlock
 	}
@@ -189,7 +190,7 @@ func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
 
 	switch typ {
 	case block.BlockTypeData:
-		if jent.size < maxJournalDataValSize {
+		if jent.size < maxIndexDataValSize {
 			bd, err := blockReadAll(blk)
 			if err != nil {
 				return nil, err
@@ -243,7 +244,7 @@ func (dev *BlockDevice) RemoveBlock(id []byte) error {
 		// Inline block
 		switch jent.Type() {
 		case block.BlockTypeData:
-			if jent.size <= maxJournalDataValSize {
+			if jent.size <= maxIndexDataValSize {
 				return nil
 			}
 		case block.BlockTypeIndex, block.BlockTypeTree:

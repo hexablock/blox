@@ -65,7 +65,7 @@ func newTestServer() (*testServer, error) {
 		return nil, err
 	}
 	ts.rdev = rdev
-	ts.dev = device.NewBlockDevice(device.NewInmemJournal(), rdev)
+	ts.dev = device.NewBlockDevice(device.NewInmemIndex(), rdev)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

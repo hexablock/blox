@@ -33,15 +33,6 @@ var (
 	errTransportShutdown = errors.New("transport shutdown")
 )
 
-// BlockDevice implements a local block storage interface.  It abstracts the
-// index, tree and data block operations.
-type BlockDevice interface {
-	SetBlock(block.Block) ([]byte, error)
-	GetBlock(id []byte) (block.Block, error)
-	RemoveBlock(id []byte) error
-	BlockExists(id []byte) bool
-}
-
 // NetTransport is the network transport for block operations
 type NetTransport struct {
 	// Client transport
@@ -54,7 +45,7 @@ type NetTransport struct {
 	inbound *inPool
 
 	// Underlying local storage
-	store BlockDevice
+	dev BlockDevice
 
 	shutdown int32
 }
@@ -71,8 +62,8 @@ func NewNetTransport(opts NetClientOptions) *NetTransport {
 
 // Register registers a BlockDevice with the transport.   This must be called
 // before a call to Start is made
-func (trans *NetTransport) Register(store BlockDevice) {
-	trans.store = store
+func (trans *NetTransport) Register(dev BlockDevice) {
+	trans.dev = dev
 
 }
 
@@ -80,7 +71,7 @@ func (trans *NetTransport) Register(store BlockDevice) {
 // incoming requests. Register must be called before starting the transport.
 // Register and Start are not thread safe
 func (trans *NetTransport) Start(ln *net.TCPListener) error {
-	if trans.store == nil {
+	if trans.dev == nil {
 		return fmt.Errorf("block device not registered")
 	}
 
@@ -122,7 +113,7 @@ func (trans *NetTransport) setBlockServe(id []byte, conn *protoConn) (bool, erro
 	//log.Printf("[DEBUG] Server SetBlock block=%x", id)
 
 	// If we already have the block, simply return
-	if trans.store.BlockExists(id) {
+	if trans.dev.BlockExists(id) {
 		return false, block.ErrBlockExists
 	}
 
@@ -145,7 +136,7 @@ func (trans *NetTransport) setBlockServe(id []byte, conn *protoConn) (bool, erro
 	us := "tcp://" + conn.RemoteAddr().String() + "/" + hex.EncodeToString(id)
 	uri := block.NewURI(us)
 	netblk := block.NewStreamedBlock(typ, uri, trans.hasher, conn, size)
-	nid, err := trans.store.SetBlock(netblk)
+	nid, err := trans.dev.SetBlock(netblk)
 	if err != nil {
 		//log.Printf("[ERROR] setBlockServe %v", err)
 		return false, err
@@ -166,7 +157,7 @@ func (trans *NetTransport) getBlockServe(conn *protoConn, id []byte) (bool, erro
 	//log.Printf("[DEBUG] NetTransport.getBlockServe id=%x", id)
 
 	// Get the block from the local store
-	blk, err := trans.store.GetBlock(id)
+	blk, err := trans.dev.GetBlock(id)
 	if err != nil {
 		return false, err
 	}
@@ -230,7 +221,7 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 			disconnect, err = trans.getBlockServe(conn, req.Hash)
 
 		case reqTypeRemove:
-			if err = trans.store.RemoveBlock(req.Hash); err == nil {
+			if err = trans.dev.RemoveBlock(req.Hash); err == nil {
 				if err = conn.WriteHeader(Header{req.Type, respOk}); err != nil {
 					disconnect = true
 				}

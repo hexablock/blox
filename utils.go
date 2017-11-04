@@ -48,19 +48,7 @@ func readBlockTypeAndSize(conn *protoConn) (block.BlockType, uint64, error) {
 		return block.BlockType(0), 0, err
 	}
 
-	// n, err := conn.Read(a)
-	// if err != nil {
-	// 	return block.BlockType(0), 0, err
-	// } else if n != len(a) {
-	// 	return block.BlockType(0), 0, errIncompleteRead
-	// }
-
 	return block.BlockType(a[0]), binary.BigEndian.Uint64(a[1:]), nil
-
-	// if btype, err = block.ReadBlockType(conn); err == nil {
-	// 	size, err = conn.ReadSize()
-	// }
-	// return btype, size, err
 }
 
 func setupTCPConn(conn net.Conn) {
