@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/hexablock/blox/block"
 )
@@ -35,6 +36,9 @@ type StreamSharder struct {
 
 	// Block device used to store blocks
 	dev BlockDevice
+
+	// shard run time
+	runtime time.Duration
 }
 
 // NewStreamSharder creates a new sharder using the block device as storage.
@@ -51,6 +55,16 @@ func NewStreamSharder(dev BlockDevice, numRoutines int) *StreamSharder {
 	return sh
 }
 
+// IndexBlock returns the index block os the shard stream
+func (sh *StreamSharder) IndexBlock() *block.IndexBlock {
+	return sh.idx
+}
+
+// Runtime returns the time take to shard the input stream
+func (sh *StreamSharder) Runtime() time.Duration {
+	return sh.runtime
+}
+
 // SetBlockSize sets the block size for the sharder.  This should be called
 // before Shard is called in order to take affect
 func (sh *StreamSharder) SetBlockSize(blockSize uint64) {
@@ -59,11 +73,15 @@ func (sh *StreamSharder) SetBlockSize(blockSize uint64) {
 
 // Shard starts sharding a given stream.  It returns an IndexBlock or an error
 func (sh *StreamSharder) Shard(rd io.ReadCloser) error {
+	start := time.Now()
+	defer func(s time.Time) {
+		sh.runtime = time.Since(s)
+	}(start)
 
 	done := make(chan struct{})
 	defer close(done)
 
-	shards, errc := shardReader(done, rd, sh.idx.BlockSize())
+	shards, errc := generateShards(done, rd, sh.idx.BlockSize())
 
 	// Start a fixed number of goroutines to read
 	c := make(chan result)
@@ -100,6 +118,9 @@ func (sh *StreamSharder) Shard(rd io.ReadCloser) error {
 		return err
 	}
 
+	// Generate id
+	sh.idx.Hash()
+
 	return nil
 }
 
@@ -133,8 +154,12 @@ func (sh *StreamSharder) consume(done <-chan struct{}, shards <-chan shard, c ch
 		if err == nil {
 
 			rslt.id, err = sh.dev.SetBlock(blk)
-			if err != nil && err != block.ErrBlockExists {
-				rslt.err = err
+			if err != nil {
+				if err != block.ErrBlockExists {
+					rslt.err = err
+				} else {
+					rslt.id = blk.ID()
+				}
 			}
 
 		} else {
@@ -151,7 +176,7 @@ func (sh *StreamSharder) consume(done <-chan struct{}, shards <-chan shard, c ch
 }
 
 // generate shards from a ReadCloser
-func shardReader(done <-chan struct{}, rd io.ReadCloser, blockSize uint64) (<-chan shard, <-chan error) {
+func generateShards(done <-chan struct{}, rd io.ReadCloser, blockSize uint64) (<-chan shard, <-chan error) {
 	chunks := make(chan shard)
 	errc := make(chan error, 1)
 

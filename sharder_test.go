@@ -30,12 +30,16 @@ func Test_StreamSharder(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	blockSize := uint64(4096)
+
 	fsize := uint64(stat.Size())
-	blks := fsize / 4096
-	blks++
+	blks := fsize / blockSize
+	if (fsize % blockSize) != 0 {
+		blks++
+	}
 
 	sharder := NewStreamSharder(dev, 3)
-	sharder.SetBlockSize(4096)
+	sharder.SetBlockSize(blockSize)
 
 	if err = sharder.Shard(fh); err != nil {
 		t.Fatal(err)
@@ -48,4 +52,27 @@ func Test_StreamSharder(t *testing.T) {
 	if int(blks) != idx.BlockCount() {
 		t.Fatalf("block count %d!=%d", blks, idx.BlockCount())
 	}
+
+	if _, err = dev.SetBlock(idx); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpfile, _ := ioutil.TempFile("/tmp", "readfile-")
+
+	asm := NewAssembler(dev, 3)
+	if _, err = asm.SetRoot(idx.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if err = asm.Assemble(tmpfile); err != nil {
+		t.Fatal(err)
+	}
+	if err = tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	s1, _ := os.Stat(tmpfile.Name())
+	if s1.Size() != int64(fsize) {
+		t.Fatal("size mismatch")
+	}
+	//t.Log(s1.Name())
 }
