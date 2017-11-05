@@ -13,19 +13,25 @@ import (
 	"github.com/hexablock/log"
 )
 
-// DefaultFilePerms are the default file permissions used when creating files on disk.
+// DefaultFilePerms are the default file permissions used when creating files on
+// disk.
 const DefaultFilePerms = 0444
 
-// FileRawDevice implements a file based block device.  Blocks are stored in files
-// 1 file per block in the data dir.
+// FileRawDevice implements a file based block device.  Blocks are stored in
+// files 1 file per block in the data dir.
 type FileRawDevice struct {
-	datadir        string
+	// Directory where blocks are stored
+	datadir string
+
+	// Default perms on each block file created
 	defaultSetPerm os.FileMode
-	hasher         func() hash.Hash
+
+	// Hash function used to hash data
+	hasher func() hash.Hash
 }
 
-// NewFileRawDevice instantiates a new FileRawDevice setting the defaults permissions, flush interval
-// provided data directory.
+// NewFileRawDevice instantiates a new FileRawDevice setting the defaults
+// permissions, flush interval provided data directory.
 func NewFileRawDevice(datadir string, hasher func() hash.Hash) (*FileRawDevice, error) {
 	dabs, err := filepath.Abs(datadir)
 	if err == nil {
@@ -43,7 +49,8 @@ func NewFileRawDevice(datadir string, hasher func() hash.Hash) (*FileRawDevice, 
 	return nil, err
 }
 
-// Hasher returns the underlying hash function generator used to generate hash id
+// Hasher returns the underlying hash function generator used to generate hash
+// id
 func (st *FileRawDevice) Hasher() func() hash.Hash {
 	return st.hasher
 }

@@ -51,11 +51,16 @@ type RawDevice interface {
 type BlockIndex interface {
 	Get(id []byte) (*IndexEntry, error)
 	Exists(id []byte) bool
+
+	// Iterate over all index entries in the store
 	Iter(cb func(*IndexEntry) error) error
-	Set(jent *IndexEntry) error
+
+	// Set an block index entry to the index store
+	Set(idx *IndexEntry) error
 	Remove(id []byte) (*IndexEntry, error)
 	Close() error
-	// Stats returns statistics
+
+	// Stats returns statistics.  Also contains raw device stats
 	Stats() *Stats
 }
 
@@ -67,6 +72,7 @@ type Stats struct {
 	MetaBlocks   int
 	TotalBlocks  int
 	BlocksOnDisk int
+	UsedBytes    uint64
 }
 
 // BlockDevice holds and stores the actual blocks.  It contians an underlying block device
@@ -74,20 +80,18 @@ type Stats struct {
 // the type and size of the block indexed by its hash id. Index and Tree blocks are stored
 // in the index/journal.
 type BlockDevice struct {
-	// Block journal/index for the underlying RawDevice
-	j BlockIndex
+	// Block index for the underlying RawDevice
+	idx BlockIndex
+
 	// Actual block store for data blocks
-	dev RawDevice
-	// hasher
-	hasher func() hash.Hash
+	raw RawDevice
 }
 
 // NewBlockDevice inits a new BlockDevice with the BlockDevice.
 func NewBlockDevice(idx BlockIndex, dev RawDevice) *BlockDevice {
 	return &BlockDevice{
-		j:      idx,
-		dev:    dev,
-		hasher: dev.Hasher(),
+		idx: idx,
+		raw: dev,
 	}
 }
 
@@ -102,13 +106,13 @@ func (dev *BlockDevice) Open() error {
 // are on the in the underlying RawDevice
 func (dev *BlockDevice) syncRawDeviceToIndex() {
 	var i int
-	dev.dev.IterIDs(func(id []byte) error {
-		if !dev.j.Exists(id) {
+	dev.raw.IterIDs(func(id []byte) error {
+		if !dev.idx.Exists(id) {
 
-			blk, err := dev.dev.GetBlock(id)
+			blk, err := dev.raw.GetBlock(id)
 			if err == nil {
 				jent := &IndexEntry{id: blk.ID(), size: blk.Size(), typ: blk.Type()}
-				err = dev.j.Set(jent)
+				err = dev.idx.Set(jent)
 			}
 
 			if err != nil {
@@ -127,7 +131,7 @@ func (dev *BlockDevice) syncRawDeviceToIndex() {
 
 // Hasher returns the underlying hasher used for hash id generation
 func (dev *BlockDevice) Hasher() func() hash.Hash {
-	return dev.hasher
+	return dev.raw.Hasher()
 }
 
 // GetBlock returns a block from the volume. Index and tree blocks will be returned in
@@ -135,7 +139,7 @@ func (dev *BlockDevice) Hasher() func() hash.Hash {
 // must be used to access the block contents.
 func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 	// Check journal for the block
-	jent, err := dev.j.Get(id)
+	jent, err := dev.idx.Get(id)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +147,7 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 	//fmt.Printf("BlockDevice.Journal.Get type=%s size=%d\n", jent.Type(), jent.size)
 
 	// Initialize a new in-memory block
-	if blk, err = block.New(jent.Type(), nil, dev.hasher); err != nil {
+	if blk, err = block.New(jent.Type(), nil, dev.raw.Hasher()); err != nil {
 		return
 	}
 
@@ -160,7 +164,7 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 				_, err = wr.Write(jent.data)
 			}
 		} else {
-			blk, err = dev.dev.GetBlock(jent.id)
+			blk, err = dev.raw.GetBlock(jent.id)
 		}
 
 	case block.BlockTypeIndex, block.BlockTypeTree:
@@ -199,7 +203,7 @@ func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
 			break
 		}
 
-		id, err := dev.dev.SetBlock(blk)
+		id, err := dev.raw.SetBlock(blk)
 		if err != nil && err != block.ErrBlockExists {
 			return nil, err
 		}
@@ -225,7 +229,7 @@ func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
 	}
 
 	// Update the journal as needed
-	err := dev.j.Set(jent)
+	err := dev.idx.Set(jent)
 
 	log.Printf("[DEBUG] BlockDevice.SetBlock id=%x type=%s size=%d error='%v'", blk.ID(), blk.Type(), blk.Size(), err)
 
@@ -234,12 +238,12 @@ func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
 
 // BlockExists returns true if the id exists in the journal
 func (dev *BlockDevice) BlockExists(id []byte) (bool, error) {
-	return dev.j.Exists(id), nil
+	return dev.idx.Exists(id), nil
 }
 
 // RemoveBlock removes a block from the volume as well as journal by the given hash id
 func (dev *BlockDevice) RemoveBlock(id []byte) error {
-	jent, err := dev.j.Remove(id)
+	jent, err := dev.idx.Remove(id)
 	if err == nil {
 		// Inline block
 		switch jent.Type() {
@@ -260,18 +264,18 @@ func (dev *BlockDevice) RemoveBlock(id []byte) error {
 	// TODO: Defer this to compaction
 	//
 
-	return dev.dev.RemoveBlock(id)
+	return dev.raw.RemoveBlock(id)
 }
 
 // Close stops all operations on the device and closes it
 func (dev *BlockDevice) Close() error {
-	return dev.dev.Close()
+	return dev.raw.Close()
 }
 
 // Stats returns stats about the device
 func (dev *BlockDevice) Stats() *Stats {
-	stats := dev.j.Stats()
-	stats.BlocksOnDisk = dev.dev.Count()
+	stats := dev.idx.Stats()
+	stats.BlocksOnDisk = dev.raw.Count()
 
 	return stats
 }

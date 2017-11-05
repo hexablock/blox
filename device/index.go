@@ -38,6 +38,9 @@ func (je *IndexEntry) Data() []byte {
 type InmemIndex struct {
 	mu sync.RWMutex
 	m  map[string]*IndexEntry
+
+	// Sum of bytes used by each block
+	usedBytes uint64
 }
 
 // NewInmemIndex inits a new in-memory journal.
@@ -45,12 +48,15 @@ func NewInmemIndex() *InmemIndex {
 	return &InmemIndex{m: make(map[string]*IndexEntry)}
 }
 
-// Stats returns the journal stats
+// Stats returns index stats
 func (j *InmemIndex) Stats() *Stats {
 	j.mu.RLock()
 	defer j.mu.RUnlock()
 
-	stat := &Stats{TotalBlocks: len(j.m)}
+	stat := &Stats{
+		TotalBlocks: len(j.m),
+		UsedBytes:   j.usedBytes,
+	}
 
 	for _, je := range j.m {
 		typ := je.Type()
@@ -95,6 +101,7 @@ func (j *InmemIndex) Set(entry *IndexEntry) error {
 
 	j.mu.Lock()
 	j.m[k] = entry
+	j.usedBytes += entry.size
 	j.mu.Unlock()
 	return nil
 }
@@ -106,6 +113,7 @@ func (j *InmemIndex) Remove(id []byte) (*IndexEntry, error) {
 
 	j.mu.Lock()
 	if val, ok := j.m[is]; ok {
+		j.usedBytes -= val.size
 		delete(j.m, is)
 		j.mu.Unlock()
 

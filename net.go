@@ -48,6 +48,7 @@ type NetTransport struct {
 	// Underlying local storage
 	dev BlockDevice
 
+	// Shutdown has been requested
 	shutdown int32
 }
 

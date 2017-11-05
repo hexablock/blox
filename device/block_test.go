@@ -182,6 +182,9 @@ func TestBlockDevice(t *testing.T) {
 	}
 
 	stat := vt.dev.Stats()
+	if stat.UsedBytes == 0 {
+		t.Error("used bytes 0")
+	}
 	b, _ := json.MarshalIndent(stat, "", " ")
 	t.Logf("%s\n", b)
 }
