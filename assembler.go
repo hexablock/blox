@@ -11,6 +11,7 @@ import (
 	"github.com/hexablock/blox/block"
 )
 
+// Assembler assembles all blocks in a root block
 type Assembler struct {
 	numRoutines int
 
@@ -21,6 +22,8 @@ type Assembler struct {
 	runtime time.Duration
 }
 
+// NewAssembler inits a new assembler backed by the BlockDevice.  It launches
+// numRoutines assemblers to retreive and process blocks.
 func NewAssembler(dev BlockDevice, numRoutines int) *Assembler {
 	return &Assembler{
 		numRoutines: numRoutines,
@@ -28,10 +31,13 @@ func NewAssembler(dev BlockDevice, numRoutines int) *Assembler {
 	}
 }
 
+// Runtime returns the time taken to assemble the root block
 func (asm *Assembler) Runtime() time.Duration {
 	return asm.runtime
 }
 
+// SetRoot retreives the block associated to the id.  This is used to retreive
+// complete indexes ar trees
 func (asm *Assembler) SetRoot(id []byte) (*block.IndexBlock, error) {
 	root, err := asm.dev.GetBlock(id)
 	if err != nil {
@@ -46,6 +52,8 @@ func (asm *Assembler) SetRoot(id []byte) (*block.IndexBlock, error) {
 	return idx, nil
 }
 
+// Assemble begins to retreive all blocks in the root and write then to the
+// writer.  Sequence order is maintained
 func (asm *Assembler) Assemble(wr io.Writer) error {
 
 	start := time.Now()

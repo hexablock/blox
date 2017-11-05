@@ -80,6 +80,7 @@ func NewNetClient(opt NetClientOptions) *NetClient {
 	return client
 }
 
+// BlockExists returns true if the block exists on a remote host
 func (trans *NetClient) BlockExists(host string, id []byte) (bool, error) {
 	if len(id) != trans.blockHashSize {
 		return false, block.ErrInvalidBlock
