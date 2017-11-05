@@ -88,7 +88,7 @@ func TestBlockDevice(t *testing.T) {
 	}
 
 	iblk := block.NewIndexBlock(nil, vt.hasher)
-	iblk.AddBlock(1, data)
+	iblk.AddBlock(0, data)
 	iblk.Hash()
 	iid, err := vt.dev.SetBlock(iblk)
 	if err != nil {

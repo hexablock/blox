@@ -153,7 +153,7 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 	case block.BlockTypeData:
 		// Get the remainder of the data if there is any.  This would be an inline data block.
 		// only
-		if jent.size <= maxIndexDataValSize {
+		if jent.size < maxIndexDataValSize {
 			// Create block from inline journal data.  It does not contain the size.
 			if wr, err = blk.Writer(); err == nil {
 				defer wr.Close()
@@ -233,8 +233,8 @@ func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
 }
 
 // BlockExists returns true if the id exists in the journal
-func (dev *BlockDevice) BlockExists(id []byte) bool {
-	return dev.j.Exists(id)
+func (dev *BlockDevice) BlockExists(id []byte) (bool, error) {
+	return dev.j.Exists(id), nil
 }
 
 // RemoveBlock removes a block from the volume as well as journal by the given hash id

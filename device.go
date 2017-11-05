@@ -14,6 +14,6 @@ type BlockDevice interface {
 	SetBlock(block.Block) ([]byte, error)
 	GetBlock(id []byte) (block.Block, error)
 	RemoveBlock(id []byte) error
-	BlockExists(id []byte) bool
+	BlockExists(id []byte) (bool, error)
 	Stats() *device.Stats
 }

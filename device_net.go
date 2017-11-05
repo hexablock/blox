@@ -42,6 +42,11 @@ func (dev *NetDevice) RemoveBlock(id []byte) error {
 	return dev.client.RemoveBlock(dev.remote, id)
 }
 
+// BlockExists returns if the block exists on the remote host
+func (dev *NetDevice) BlockExists(id []byte) (bool, error) {
+	return dev.client.BlockExists(dev.remote, id)
+}
+
 // Close shutdowns the underlying network transport
 func (dev *NetDevice) Close() error {
 	dev.client.Shutdown()

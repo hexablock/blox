@@ -97,7 +97,8 @@ func (block *IndexBlock) Iter(f func(index uint64, id []byte) error) error {
 	}
 	ids := make([][]byte, bcount)
 	for i := range block.blocks {
-		ids[i-1] = block.blocks[i]
+		//ids[i-1] = block.blocks[i]
+		ids[i] = block.blocks[i]
 	}
 
 	// Iterate over sorted set
@@ -124,7 +125,8 @@ func (block *IndexBlock) Blocks() [][]byte {
 	}
 	ids := make([][]byte, bcount)
 	for i := range block.blocks {
-		ids[i-1] = block.blocks[i]
+		//ids[i-1] = block.blocks[i]
+		ids[i] = block.blocks[i]
 	}
 	block.mu.RUnlock()
 	return ids
@@ -200,8 +202,9 @@ func (block *IndexBlock) UnmarshalBinary(b []byte) error {
 
 	block.blocks = make(map[uint64][]byte)
 	var last uint64
-	for i := uint64(1); i <= bcount; i++ {
-		p := i * w
+	for i := uint64(0); i < bcount; i++ {
+		//p := i * w
+		p := last + w
 		block.blocks[i] = ids[last:p]
 		last = p
 	}

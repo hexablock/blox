@@ -12,6 +12,7 @@ import (
 type Transport interface {
 	GetBlock(host string, id []byte) (block.Block, error)
 	SetBlock(host string, blk block.Block) ([]byte, error)
+	BlockExists(host string, id []byte) (bool, error)
 	RemoveBlock(host string, id []byte) error
 	Register(store BlockDevice)
 	Start(ln *net.TCPListener) error
@@ -52,6 +53,14 @@ func (trans *LocalNetTranport) SetBlock(host string, blk block.Block) ([]byte, e
 		return trans.local.SetBlock(blk)
 	}
 	return trans.remote.SetBlock(host, blk)
+}
+
+// BlockExists calls BlockExists on a local or remote host
+func (trans *LocalNetTranport) BlockExists(host string, id []byte) (bool, error) {
+	if trans.host == host {
+		return trans.local.BlockExists(id)
+	}
+	return trans.remote.BlockExists(host, id)
 }
 
 // RemoveBlock calls RemoveBlock on a local or remote host

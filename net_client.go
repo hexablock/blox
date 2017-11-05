@@ -68,15 +68,49 @@ type NetClient struct {
 // NewNetClient inits a new client transport with the given connection pool,
 // connection reap interval and hash size of ids
 func NewNetClient(opt NetClientOptions) *NetClient {
-	pool := newOutPool(opt.Timeout, opt.MaxIdle)
 	client := &NetClient{
-		pool:          pool,
+		pool:          newOutPool(opt.Timeout, opt.MaxIdle),
 		reapInterval:  opt.ReapInterval,
 		hasher:        opt.Hasher,
 		blockHashSize: opt.Hasher().Size(),
 	}
+
 	go client.reap()
+
 	return client
+}
+
+func (trans *NetClient) BlockExists(host string, id []byte) (bool, error) {
+	if len(id) != trans.blockHashSize {
+		return false, block.ErrInvalidBlock
+	}
+
+	conn, err := trans.pool.getConn(host)
+	if err != nil {
+		return false, err
+	}
+
+	if err = writeHeaderAndID(conn, Header{reqTypeExists, respOk}, id); err != nil {
+		conn.Close()
+		return false, err
+	}
+
+	// Read response header
+	if err = conn.readResponseHeader(); err != nil {
+		trans.pool.returnConn(conn)
+		return false, err
+	}
+
+	b := make([]byte, 1)
+	if _, err = conn.Read(b); err != nil {
+		conn.Close()
+		return false, err
+	}
+
+	if b[0] == 0 {
+		return false, nil
+	}
+	return true, nil
 }
 
 // GetBlock makes a GetBlock request to the remote host.
@@ -89,7 +123,7 @@ func (trans *NetClient) GetBlock(host string, id []byte) (block.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	//log.Printf("NetClient.GetBlock got connection id=%x", id)
+
 	if err = writeHeaderAndID(conn, Header{reqTypeGet, respOk}, id); err != nil {
 		conn.Close()
 		return nil, err

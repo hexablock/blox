@@ -33,9 +33,9 @@ func Test_IndexBlock(t *testing.T) {
 	uri := NewURI("memory://")
 	idx := NewIndexBlock(uri, sha256.New)
 	idx.SetBlockSize(19)
-	idx.AddBlock(1, mem1)
-	idx.AddBlock(2, mem2)
-	idx.AddBlock(3, mem3)
+	idx.AddBlock(0, mem1)
+	idx.AddBlock(1, mem2)
+	idx.AddBlock(2, mem3)
 	idx.Hash()
 	if len(idx.blocks) != 3 {
 		t.Fatal("should have 3 blocks")

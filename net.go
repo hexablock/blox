@@ -19,6 +19,7 @@ import (
 
 const (
 	reqTypeGet byte = iota + 3
+	reqTypeExists
 	reqTypeSet
 	reqTypeRemove
 )
@@ -113,7 +114,7 @@ func (trans *NetTransport) setBlockServe(id []byte, conn *protoConn) (bool, erro
 	//log.Printf("[DEBUG] Server SetBlock block=%x", id)
 
 	// If we already have the block, simply return
-	if trans.dev.BlockExists(id) {
+	if ok, _ := trans.dev.BlockExists(id); ok {
 		return false, block.ErrBlockExists
 	}
 
@@ -150,6 +151,30 @@ func (trans *NetTransport) setBlockServe(id []byte, conn *protoConn) (bool, erro
 	}
 
 	//log.Printf("NetTransport.setBlockServe block set id=%x", nid)
+	return false, nil
+}
+
+func (trans *NetTransport) blockExistsServe(conn *protoConn, id []byte) (bool, error) {
+	ok, err := trans.dev.BlockExists(id)
+	if err != nil {
+		return false, err
+	}
+	err = conn.WriteHeader(Header{reqTypeExists, respOk})
+	if err != nil {
+		// Immediately close connection if the ack fails
+		return true, err
+	}
+
+	if !ok {
+		_, err = conn.Write([]byte{0})
+	} else {
+		_, err = conn.Write([]byte{1})
+	}
+
+	if err != nil {
+		return true, err
+	}
+
 	return false, nil
 }
 
@@ -216,6 +241,8 @@ func (trans *NetTransport) handleConn(conn *protoConn) {
 
 		// Serve op
 		switch req.Type {
+		case reqTypeExists:
+			disconnect, err = trans.blockExistsServe(conn, req.Hash)
 
 		case reqTypeGet:
 			disconnect, err = trans.getBlockServe(conn, req.Hash)
