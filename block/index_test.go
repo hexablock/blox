@@ -81,11 +81,11 @@ func Test_IndexBlock(t *testing.T) {
 	}
 	rd.Close()
 
-	if len(b) != 112 {
+	if len(b) != 113 {
 		t.Fatalf("incomplete data have=%d", len(b))
 	}
-	if idx.Size() != 112 {
-		t.Fatalf("incomplete data have=%d", len(b))
+	if idx.Size() != 113 {
+		t.Fatalf("incomplete data have=%d", idx.Size())
 	}
 
 	// Get source reader
@@ -147,7 +147,7 @@ func Test_IndexBlock_smallfile(t *testing.T) {
 	i1.SetFileSize(12)
 
 	bin := i1.MarshalBinary()
-	if len(bin) != 17 {
+	if len(bin) != 18 {
 		t.Fatal("should have 17 bytes")
 	}
 

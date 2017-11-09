@@ -6,13 +6,18 @@ import (
 )
 
 var (
-	ErrInvalidBlock     = errors.New("invalid block")
-	ErrBlockNotFound    = errors.New("block not found")
-	ErrBlockExists      = errors.New("block exists")
+	// ErrInvalidBlock is used when the block is of invalid format
+	ErrInvalidBlock = errors.New("invalid block")
+	// ErrBlockNotFound is used when the block doesn't exist
+	ErrBlockNotFound = errors.New("block not found")
+	// ErrBlockExists is used when a block already exists
+	ErrBlockExists = errors.New("block exists")
+	// ErrInvalidBlockType is used if an unsupported block type is encountered
 	ErrInvalidBlockType = errors.New("invalid block type")
-	ErrReadBlockType    = errors.New("failed to read BlockType")
-	ErrWriteBlockType   = errors.New("failed to write BlockType")
-
+	// ErrReadBlockType is an error when the type cannot be read
+	ErrReadBlockType = errors.New("failed to read BlockType")
+	// ErrWriteBlockType is an error when the type cannot be written
+	ErrWriteBlockType    = errors.New("failed to write BlockType")
 	ErrUnsupportedScheme = errors.New("unsupported scheme")
 
 	errReaderWriterOpen = errors.New("reader/writer already open")

@@ -15,13 +15,20 @@ import (
 // making up the whole file. It is thread safe
 type IndexBlock struct {
 	*baseBlock
+
 	// Total file size represented by this index block
 	fileSize uint64
+
 	// Block size of each member block
 	blockSize uint64
+
+	// replicas
+	replicas uint8
+
 	// Block ids that belong to this block
 	mu     sync.RWMutex
 	blocks map[uint64][]byte
+
 	// Read buffer used when calling Reader
 	rbuf *bytes.Buffer
 }
@@ -29,12 +36,29 @@ type IndexBlock struct {
 // NewIndexBlock instantiates a new Data index.
 func NewIndexBlock(uri *URI, hasher func() hash.Hash) *IndexBlock {
 	di := &IndexBlock{
-		baseBlock: &baseBlock{hasher: hasher, uri: uri, typ: BlockTypeIndex, size: 16},
+		baseBlock: &baseBlock{
+			hasher: hasher,
+			uri:    uri,
+			typ:    BlockTypeIndex,
+			size:   17,
+		},
 		blockSize: DefaultBlockSize,
+		replicas:  1,
 		blocks:    make(map[uint64][]byte),
 	}
 
 	return di
+}
+
+// Replicas returns the replica count set on the index and its blocks
+func (block *IndexBlock) Replicas() uint8 {
+	return block.replicas
+}
+
+// SetReplicas sets the replica count for the index as well as data blocks it
+// contains
+func (block *IndexBlock) SetReplicas(replicas uint8) {
+	block.replicas = replicas
 }
 
 // SetFileSize sets the file size for the index the file is representing
@@ -64,15 +88,9 @@ func (block *IndexBlock) AddBlock(index uint64, blk Block) {
 	size := blk.Size()
 
 	block.IndexBlock(index, id, size)
-	// block.mu.Lock()
-	// // Update the index
-	// block.blocks[index] = id
-	// block.fileSize += blk.Size()
-	// // Update the actual size of this block.
-	// block.size += uint64(len(id))
-	// block.mu.Unlock()
 }
 
+// IndexBlock adds a block to the index by the index, id and size
 func (block *IndexBlock) IndexBlock(index uint64, id []byte, size uint64) {
 
 	block.mu.Lock()
@@ -159,7 +177,7 @@ func (block *IndexBlock) MarshalBinary() []byte {
 	bsz := make([]byte, 8)
 	binary.BigEndian.PutUint64(bsz, block.blockSize)
 
-	out := append(append([]byte{byte(block.typ)}, sz...), bsz...)
+	out := append(append([]byte{byte(block.typ), byte(block.replicas)}, sz...), bsz...)
 
 	// Write all the block ids in order
 	ids := block.Blocks()
@@ -172,14 +190,16 @@ func (block *IndexBlock) MarshalBinary() []byte {
 
 // UnmarshalBinary takes the byte slice and unmarshals it into an IndexBlock.
 func (block *IndexBlock) UnmarshalBinary(b []byte) error {
-	if len(b) < 17 {
+	if len(b) < 18 {
 		return ErrInvalidBlock
 	}
 
 	block.typ = BlockType(b[0])
+	block.replicas = uint8(b[1])
 	block.size = uint64(len(b[1:]))
-	block.fileSize = binary.BigEndian.Uint64(b[1:9])
-	block.blockSize = binary.BigEndian.Uint64(b[9:17])
+
+	block.fileSize = binary.BigEndian.Uint64(b[2:10])
+	block.blockSize = binary.BigEndian.Uint64(b[10:18])
 
 	// Block count
 	var bcount uint64
@@ -197,7 +217,7 @@ func (block *IndexBlock) UnmarshalBinary(b []byte) error {
 		return nil
 	}
 
-	ids := b[17:]
+	ids := b[18:]
 	w := uint64(len(ids)) / bcount
 
 	block.blocks = make(map[uint64][]byte)
@@ -220,6 +240,7 @@ func (block *IndexBlock) MarshalJSON() ([]byte, error) {
 		FileSize   uint64
 		BlockSize  uint64
 		BlockCount int
+		Replicas   uint8
 		Blocks     []string
 	}{
 		ID:         hex.EncodeToString(block.ID()),
@@ -227,6 +248,7 @@ func (block *IndexBlock) MarshalJSON() ([]byte, error) {
 		FileSize:   block.FileSize(),
 		BlockSize:  block.BlockSize(),
 		BlockCount: block.BlockCount(),
+		Replicas:   block.replicas,
 		Blocks:     make([]string, len(block.blocks)),
 	}
 
@@ -239,7 +261,8 @@ func (block *IndexBlock) MarshalJSON() ([]byte, error) {
 }
 
 // Reader returns a ReadCloser to this block.  It contains a byte stream with
-// the 8-byte size, 8-byte block size followed by an ordered list of block id's.
+// the 1-byte replica count, 8-byte size, 8-byte block size followed by an
+// ordered list of block id's.
 func (block *IndexBlock) Reader() (io.ReadCloser, error) {
 	b := block.MarshalBinary()
 	block.rbuf = bytes.NewBuffer(b[1:])
@@ -254,6 +277,7 @@ func (block *IndexBlock) Read(p []byte) (int, error) {
 // the WriteCloser
 func (block *IndexBlock) Writer() (io.WriteCloser, error) {
 	block.hw = NewHasherWriter(block.hasher(), bytes.NewBuffer(nil))
+	// Write block type
 	err := WriteBlockType(block.hw, block.typ)
 	return block, err
 }

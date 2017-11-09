@@ -13,6 +13,15 @@ import (
 // inline in the journal entry 4KB
 const maxIndexDataValSize = 4 * 1024
 
+// Delegate implements a block device Delegate for write operations
+type Delegate interface {
+	// Called when a block is successfully set ie. created
+	BlockSet(blk block.Block)
+
+	// Called when a block is successfully removed
+	BlockRemove(id []byte)
+}
+
 // RawDevice represents a block storage interface specifically for data blocks. It
 // contains no smarts
 type RawDevice interface {
@@ -85,6 +94,10 @@ type BlockDevice struct {
 
 	// Actual block store for data blocks
 	raw RawDevice
+
+	// Called at various phases based on action.  This is user supplied to take
+	// custom actions
+	delegate Delegate
 }
 
 // NewBlockDevice inits a new BlockDevice with the BlockDevice.
@@ -93,6 +106,11 @@ func NewBlockDevice(idx BlockIndex, dev RawDevice) *BlockDevice {
 		idx: idx,
 		raw: dev,
 	}
+}
+
+// SetDelegate set the block device delegate that is called on write operations
+func (dev *BlockDevice) SetDelegate(delegate Delegate) {
+	dev.delegate = delegate
 }
 
 // Open opens the new block device for operations.  It performs an index check
@@ -180,6 +198,11 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 	return
 }
 
+// BlockExists returns true if the id exists in the journal
+func (dev *BlockDevice) BlockExists(id []byte) (bool, error) {
+	return dev.idx.Exists(id), nil
+}
+
 // SetBlock stores the block in the volume. For DataBlocks the ID is expected to be
 // present.
 func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
@@ -228,17 +251,16 @@ func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
 		return nil, block.ErrInvalidBlockType
 	}
 
-	// Update the journal as needed
+	// Update the index as needed
 	err := dev.idx.Set(jent)
+	if err == nil && dev.delegate != nil {
+		dev.delegate.BlockSet(blk)
+	}
 
-	log.Printf("[DEBUG] BlockDevice.SetBlock id=%x type=%s size=%d error='%v'", blk.ID(), blk.Type(), blk.Size(), err)
+	log.Printf("[DEBUG] BlockDevice.SetBlock id=%x type=%s size=%d error='%v'",
+		blk.ID(), blk.Type(), blk.Size(), err)
 
 	return jent.id, err
-}
-
-// BlockExists returns true if the id exists in the journal
-func (dev *BlockDevice) BlockExists(id []byte) (bool, error) {
-	return dev.idx.Exists(id), nil
 }
 
 // RemoveBlock removes a block from the volume as well as journal by the given hash id
@@ -249,9 +271,16 @@ func (dev *BlockDevice) RemoveBlock(id []byte) error {
 		switch jent.Type() {
 		case block.BlockTypeData:
 			if jent.size <= maxIndexDataValSize {
+				if dev.delegate != nil {
+					dev.delegate.BlockRemove(id)
+				}
 				return nil
 			}
+
 		case block.BlockTypeIndex, block.BlockTypeTree:
+			if dev.delegate != nil {
+				dev.delegate.BlockRemove(id)
+			}
 			return nil
 		}
 
@@ -264,7 +293,11 @@ func (dev *BlockDevice) RemoveBlock(id []byte) error {
 	// TODO: Defer this to compaction
 	//
 
-	return dev.raw.RemoveBlock(id)
+	if err = dev.raw.RemoveBlock(id); err == nil && dev.delegate != nil {
+		dev.delegate.BlockRemove(id)
+	}
+
+	return err
 }
 
 // Close stops all operations on the device and closes it

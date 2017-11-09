@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hexablock/blox/block"
 	"github.com/hexablock/blox/device"
 	"github.com/hexablock/log"
 )
@@ -44,6 +45,15 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+type testDelegate struct{}
+
+func (dlg *testDelegate) BlockSet(blk block.Block) {
+	log.Printf("Block set %x %s %d", blk.ID(), blk.Type(), blk.Size())
+}
+func (dlg *testDelegate) BlockRemove(id []byte) {
+	log.Printf("Block removed %x", id)
+}
+
 type testServer struct {
 	d      string
 	rdev   device.RawDevice
@@ -66,6 +76,7 @@ func newTestServer() (*testServer, error) {
 	}
 	ts.rdev = rdev
 	ts.dev = device.NewBlockDevice(device.NewInmemIndex(), rdev)
+	ts.dev.SetDelegate(&testDelegate{})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
