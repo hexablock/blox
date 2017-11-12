@@ -1,6 +1,9 @@
 package device
 
 import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
 	"sync"
 
 	"github.com/hexablock/blox/block"
@@ -12,6 +15,44 @@ type IndexEntry struct {
 	typ  block.BlockType
 	size uint64
 	data []byte
+}
+
+// MarshalBinary marshals the entry into a 1-8-hash-null-data - type, size, id,
+// followed by a null byte then the data
+func (je *IndexEntry) MarshalBinary() ([]byte, error) {
+	buf := make([]byte, 9)
+	buf[0] = byte(je.typ)
+	binary.BigEndian.PutUint64(buf[1:], je.size)
+	buf = append(buf, je.id...)
+	buf = append(buf, '\x00')
+	return append(buf, je.data...), nil
+}
+
+// UnmarshalBinary unmarshals a byte slice into an IndexEntry.  It returns an
+// error if there is not enough data
+func (je *IndexEntry) UnmarshalBinary(b []byte) error {
+	// Min sha1 check
+	if len(b) < 29 {
+		return fmt.Errorf("not enough data")
+	}
+	je.typ = block.BlockType(b[0])
+	je.size = binary.BigEndian.Uint64(b[1:9])
+
+	i := bytes.IndexByte(b[9:], '\x00')
+	if i < 0 {
+		return fmt.Errorf("id not found")
+	}
+
+	je.id = make([]byte, i)
+	i += 9
+	copy(je.id, b[9:i])
+
+	l := len(b[i+1:])
+	if l > 0 {
+		je.data = make([]byte, l)
+		copy(je.data, b[i+1:])
+	}
+	return nil
 }
 
 // ID returns the id for the entry
