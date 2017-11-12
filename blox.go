@@ -30,20 +30,22 @@ func NewBlox(dev BlockDevice) *Blox {
 }
 
 // ReadIndex reads the index id and writes the block data to the writer
-func (blox *Blox) ReadIndex(id []byte, wr io.Writer) error {
-	asm := NewAssembler(blox.dev, 2)
-	err := asm.Assemble(wr)
+func (blox *Blox) ReadIndex(id []byte, wr io.Writer, parallel int) error {
+	asm := NewAssembler(blox.dev, parallel)
+	_, err := asm.SetRoot(id)
+	if err == nil {
+		err = asm.Assemble(wr)
+	}
 	return err
 }
 
 // WriteIndex reads from the reader and writes to blox storage
-func (blox *Blox) WriteIndex(rd io.ReadCloser) error {
-	sharder := NewStreamSharder(blox.dev, 2)
-	err := sharder.Shard(rd)
-	if err == nil {
-		idx := sharder.IndexBlock()
+func (blox *Blox) WriteIndex(rd io.ReadCloser, parallel int) (idx *block.IndexBlock, err error) {
+	sharder := NewStreamSharder(blox.dev, parallel)
+	if err = sharder.Shard(rd); err == nil {
+		idx = sharder.IndexBlock()
 		_, err = blox.dev.SetBlock(idx)
 	}
 
-	return err
+	return
 }

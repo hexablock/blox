@@ -55,6 +55,9 @@ func (asm *Assembler) SetRoot(id []byte) (*block.IndexBlock, error) {
 // Assemble begins to retreive all blocks in the root and write then to the
 // writer.  Sequence order is maintained
 func (asm *Assembler) Assemble(wr io.Writer) error {
+	if asm.idx == nil {
+		return fmt.Errorf("index block not set")
+	}
 
 	start := time.Now()
 	defer func(s time.Time) {
