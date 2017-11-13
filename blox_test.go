@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hexablock/blox/block"
 	"github.com/hexablock/blox/device"
 	"github.com/hexablock/log"
 )
@@ -47,7 +46,7 @@ func TestMain(m *testing.M) {
 
 type testDelegate struct{}
 
-func (dlg *testDelegate) BlockSet(blk block.Block) {
+func (dlg *testDelegate) BlockSet(blk device.IndexEntry) {
 	log.Printf("Block set %x %s %d", blk.ID(), blk.Type(), blk.Size())
 }
 func (dlg *testDelegate) BlockRemove(id []byte) {

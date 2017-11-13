@@ -16,7 +16,7 @@ const maxIndexDataValSize = 4 * 1024
 // Delegate implements a block device Delegate for write operations
 type Delegate interface {
 	// Called when a block is successfully set ie. created
-	BlockSet(blk block.Block)
+	BlockSet(idx IndexEntry)
 
 	// Called when a block is successfully removed
 	BlockRemove(id []byte)
@@ -113,16 +113,9 @@ func (dev *BlockDevice) SetDelegate(delegate Delegate) {
 	dev.delegate = delegate
 }
 
-// Open opens the new block device for operations.  It performs an index check
-// before returning.
-func (dev *BlockDevice) Open() error {
-	dev.syncRawDeviceToIndex()
-	return nil
-}
-
-// syncRawDeviceToIndex checks the index to make sure it contains blocks that
-// are on the in the underlying RawDevice
-func (dev *BlockDevice) syncRawDeviceToIndex() {
+// Reindex scans the raw device and adds indexes for earch block not found in
+// the index
+func (dev *BlockDevice) Reindex() {
 	var i int
 	dev.raw.IterIDs(func(id []byte) error {
 		if !dev.idx.Exists(id) {
@@ -252,15 +245,21 @@ func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
 	}
 
 	// Update the index as needed
-	err := dev.idx.Set(jent)
-	if err == nil && dev.delegate != nil {
-		dev.delegate.BlockSet(blk)
-	}
+	err := dev.setIndex(jent)
 
 	log.Printf("[DEBUG] BlockDevice.SetBlock id=%x type=%s size=%d error='%v'",
 		blk.ID(), blk.Type(), blk.Size(), err)
 
 	return jent.id, err
+}
+
+// set the index and call the delegate on success
+func (dev *BlockDevice) setIndex(jent *IndexEntry) error {
+	err := dev.idx.Set(jent)
+	if err == nil && dev.delegate != nil {
+		dev.delegate.BlockSet(*jent)
+	}
+	return err
 }
 
 // RemoveBlock removes a block from the volume as well as journal by the given hash id

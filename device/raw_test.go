@@ -60,7 +60,7 @@ func newDevTester() (*devTester, error) {
 	if err == nil {
 		vt.raw = rdev
 		vt.dev = NewBlockDevice(NewInmemIndex(), rdev)
-		err = vt.dev.Open()
+		vt.dev.Reindex()
 	}
 
 	return vt, err
