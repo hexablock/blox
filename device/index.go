@@ -3,11 +3,14 @@ package device
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"sync"
 
 	"github.com/hexablock/blox/block"
 )
+
+// TODO: FIX IndexEntry serialization as it is not consistent
 
 // IndexEntry represents a single entry for a block
 type IndexEntry struct {
@@ -23,9 +26,13 @@ func (je *IndexEntry) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, 9)
 	buf[0] = byte(je.typ)
 	binary.BigEndian.PutUint64(buf[1:], je.size)
-	buf = append(buf, je.id...)
+
+	hexid := hex.EncodeToString(je.id)
+	hexid += "|"
+	buf = append(buf, []byte(hexid)...)
+	//buf = append(buf, je.id...)
 	// append marker
-	buf = append(buf, byte('|'), byte('|'))
+	//buf = append(buf, byte('|'), byte(';'))
 	//buf = append(buf, '\x00')
 	return append(buf, je.data...), nil
 }
@@ -40,18 +47,26 @@ func (je *IndexEntry) UnmarshalBinary(b []byte) error {
 	je.typ = block.BlockType(b[0])
 	je.size = binary.BigEndian.Uint64(b[1:9])
 
-	i := bytes.Index(b[9:], []byte("||"))
+	i := bytes.Index(b[9:], []byte("|"))
+
 	//i := bytes.IndexByte(b[9:], '\x00')
 	if i < 0 {
 		return fmt.Errorf("id not found")
 	}
-
-	je.id = make([]byte, i)
 	i += 9
-	copy(je.id, b[9:i])
+	//log.Println(string(b[9:i]), len(b[9:i]))
+
+	var err error
+	if je.id, err = hex.DecodeString(string(b[9:i])); err != nil {
+		return err
+	}
+
+	//je.id = make([]byte, i)
+	//i += 9
+	//copy(je.id, b[9:i])
 
 	// marker increment
-	i += 2
+	i++
 	l := len(b[i:])
 	if l > 0 {
 		je.data = make([]byte, l)
