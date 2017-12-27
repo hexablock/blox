@@ -24,7 +24,9 @@ func (je *IndexEntry) MarshalBinary() ([]byte, error) {
 	buf[0] = byte(je.typ)
 	binary.BigEndian.PutUint64(buf[1:], je.size)
 	buf = append(buf, je.id...)
-	buf = append(buf, '\x00')
+	// append marker
+	buf = append(buf, byte('|'), byte('|'))
+	//buf = append(buf, '\x00')
 	return append(buf, je.data...), nil
 }
 
@@ -38,7 +40,8 @@ func (je *IndexEntry) UnmarshalBinary(b []byte) error {
 	je.typ = block.BlockType(b[0])
 	je.size = binary.BigEndian.Uint64(b[1:9])
 
-	i := bytes.IndexByte(b[9:], '\x00')
+	i := bytes.Index(b[9:], []byte("||"))
+	//i := bytes.IndexByte(b[9:], '\x00')
 	if i < 0 {
 		return fmt.Errorf("id not found")
 	}
@@ -47,10 +50,12 @@ func (je *IndexEntry) UnmarshalBinary(b []byte) error {
 	i += 9
 	copy(je.id, b[9:i])
 
-	l := len(b[i+1:])
+	// marker increment
+	i += 2
+	l := len(b[i:])
 	if l > 0 {
 		je.data = make([]byte, l)
-		copy(je.data, b[i+1:])
+		copy(je.data, b[i:])
 	}
 	return nil
 }
