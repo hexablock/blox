@@ -100,7 +100,7 @@ type BlockDevice struct {
 	delegate Delegate
 }
 
-// NewBlockDevice inits a new BlockDevice with the BlockDevice.
+// NewBlockDevice inits a new BlockDevice with the underlying raw BlockDevice.
 func NewBlockDevice(idx BlockIndex, dev RawDevice) *BlockDevice {
 	return &BlockDevice{
 		idx: idx,
@@ -108,7 +108,8 @@ func NewBlockDevice(idx BlockIndex, dev RawDevice) *BlockDevice {
 	}
 }
 
-// SetDelegate set the block device delegate that is called on write operations
+// SetDelegate set the block device delegate.  It should be set before the
+// device is used as it is not thread-safe
 func (dev *BlockDevice) SetDelegate(delegate Delegate) {
 	dev.delegate = delegate
 }
@@ -154,8 +155,6 @@ func (dev *BlockDevice) GetBlock(id []byte) (blk block.Block, err error) {
 	if err != nil {
 		return nil, err
 	}
-
-	//fmt.Printf("BlockDevice.Journal.Get type=%s size=%d\n", jent.Type(), jent.size)
 
 	// Initialize a new in-memory block
 	if blk, err = block.New(jent.Type(), nil, dev.raw.Hasher()); err != nil {
@@ -253,10 +252,11 @@ func (dev *BlockDevice) SetBlock(blk block.Block) ([]byte, error) {
 	return jent.id, err
 }
 
-// set the index and call the delegate on success
+// set/update the block index and call the delegate on success
 func (dev *BlockDevice) setIndex(jent *IndexEntry) error {
 	err := dev.idx.Set(jent)
 	if err == nil && dev.delegate != nil {
+		// Call delegate
 		dev.delegate.BlockSet(*jent)
 	}
 	return err
@@ -271,6 +271,7 @@ func (dev *BlockDevice) RemoveBlock(id []byte) error {
 		case block.BlockTypeData:
 			if jent.size <= maxIndexDataValSize {
 				if dev.delegate != nil {
+					// Call delegate
 					dev.delegate.BlockRemove(id)
 				}
 				return nil
@@ -278,6 +279,7 @@ func (dev *BlockDevice) RemoveBlock(id []byte) error {
 
 		case block.BlockTypeIndex, block.BlockTypeTree:
 			if dev.delegate != nil {
+				// Call delegate
 				dev.delegate.BlockRemove(id)
 			}
 			return nil
@@ -293,6 +295,7 @@ func (dev *BlockDevice) RemoveBlock(id []byte) error {
 	//
 
 	if err = dev.raw.RemoveBlock(id); err == nil && dev.delegate != nil {
+		// Call delegate
 		dev.delegate.BlockRemove(id)
 	}
 
