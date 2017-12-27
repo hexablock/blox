@@ -19,5 +19,4 @@ func Test_FileDataBlock(t *testing.T) {
 	if err == nil {
 		t.Fatal("should fail parsing id")
 	}
-
 }

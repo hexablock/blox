@@ -18,7 +18,12 @@ type FileDataBlock struct {
 // NewFileDataBlock instantiates a new Block for the given type
 func NewFileDataBlock(uri *URI, hasher func() hash.Hash) *FileDataBlock {
 	return &FileDataBlock{
-		baseBlock: &baseBlock{typ: BlockTypeData, uri: uri, hasher: hasher}}
+		baseBlock: &baseBlock{
+			typ:    BlockTypeData,
+			uri:    uri,
+			hasher: hasher,
+		},
+	}
 }
 
 // LoadFileDataBlock loads a FileDataBlock from a file on disk.  It does not actually
@@ -51,7 +56,8 @@ func LoadFileDataBlock(uri *URI, hasher func() hash.Hash) (*FileDataBlock, error
 // Reader reads data from block.  It first burns the 1-byte type then returns a ReadCloser to the
 // actual data
 func (block *FileDataBlock) Reader() (io.ReadCloser, error) {
-	fh, err := os.Open(block.uri.Path)
+	fh, err := os.OpenFile(block.uri.Path, os.O_RDONLY, 0555)
+	//fh, err := os.Open(block.uri.Path)
 	if err != nil {
 		return nil, err
 	}
