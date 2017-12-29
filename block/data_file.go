@@ -62,7 +62,7 @@ func (block *FileDataBlock) Reader() (io.ReadCloser, error) {
 		return nil, err
 	}
 
-	// burn the type from ther reader
+	// Burn type from reader
 	if _, err = ReadBlockType(fh); err != nil {
 		fh.Close()
 		return nil, err
@@ -85,6 +85,7 @@ func (block *FileDataBlock) Writer() (io.WriteCloser, error) {
 	tmpfile := fh.Name()
 
 	block.hw = NewHasherWriter(block.hasher(), fh)
+	// Write type before returning writer
 	if err = WriteBlockType(block.hw, block.typ); err != nil {
 		fh.Close()
 		os.Remove(tmpfile)

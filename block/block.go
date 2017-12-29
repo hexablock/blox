@@ -58,7 +58,7 @@ type Block interface {
 	Reader() (io.ReadCloser, error)
 	// Writer to write data to block
 	Writer() (io.WriteCloser, error)
-	// Returns the hash id of the block given the hash function
+	// Compute and return hash id
 	Hash() []byte
 	// URI returns the location uri of the block
 	URI() *URI
